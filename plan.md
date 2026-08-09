@@ -17,7 +17,7 @@ Formular in Tally erscheint damit ohne Deploy auf der Seite.
 | Framework | Hono | Web-Standard-`fetch`, kein Node-Polyfill nötig, ~14kB |
 | Rendering | `hono/html` (server-side) | Formularliste ist erst zur Request-Zeit bekannt |
 | Assets | Workers Assets (`./public`) | CSS/Fonts ohne Worker-Invocation ausliefern |
-| Build | keiner | Kein Client-JS ausser dem Tally-Embed-Script |
+| Build | keiner | Client-JS ist eine Datei: `public/tally.js` |
 | Sprache | TypeScript | |
 
 ### Explizit nicht gewählt
@@ -38,10 +38,11 @@ Browser ──GET /──> Worker (Hono)
                      │
                      ├─ fetch api.tally.so/forms   (Bearer, serverseitig)
                      │
-                     └─ HTML mit n × <button data-tally-open="{formId}">
+                     └─ HTML mit n × <button data-form-id="{formId}">
                           │
-Browser ─────────────────┴──> tally.so/widgets/embed.js
-                                 └─ Klick auf Button → Formular als Popup
+Browser ─────────────────┴──> /tally.js
+                                 └─ Klick auf Button → Ladezustand,
+                                    embed.js nachladen, Formular als Popup
 ```
 
 Die Formulare werden **nicht** inline eingebettet, sondern öffnen als Popup. Vor dem
@@ -82,7 +83,7 @@ Fehler abfangen, leeres Grid mit Hinweistext rendern, Fehler nach Sentry.
 │   ├── workshops.ts      # Workshop-Semantik: Hidden Fields, Datum, Filter
 │   ├── workshops.test.ts # Unit-Tests der reinen Funktionen (node:test)
 │   └── views/
-│       ├── layout.ts     # html-Skeleton, Head, Meta, Header, Footer, Embed
+│       ├── layout.ts     # html-Skeleton, Head, Meta, Header, Footer, Script
 │       ├── gallery.ts    # Bildliste und CSS-only Carousel
 │       ├── intro.ts      # Section "Tufting-Workshops in Bern"
 │       ├── schedule.ts   # Section "Wähle deinen Workshoptag" + Kontakt
@@ -91,8 +92,9 @@ Fehler abfangen, leeres Grid mit Hinweistext rendern, Fehler nach Sentry.
 │       └── legal.ts      # Impressum, Datenschutz, 404
 ├── public/
 │   ├── style.css         # Tokens und Regeln, siehe DESIGN_GUIDE.md
+│   ├── tally.js          # Popup öffnen, Button bis dahin im Ladezustand
 │   ├── fonts/            # Inter (Latin-Subset, self-hosted) + OFL-Lizenz
-│   ├── img/              # Carousel, Bildraster, Porträt (aktuell Platzhalter)
+│   ├── img/              # Carousel, Intro-Bilder, Porträt (aktuell Platzhalter)
 │   ├── favicon.svg       # Wortmarke als N, dazu .ico und apple-touch-icon
 │   └── og-image.png      # Link-Vorschau 1200×630 (aktuell typografisch)
 ├── wrangler.jsonc
@@ -152,9 +154,9 @@ der Zieldomain und die Custom Domain selbst.
 
 ### Phase 3 — Cards und Embed (1–2h)
 
-- `card.ts`: Card-Markup mit `<button data-tally-open="{formId}">`
-- Popup-Parameter festlegen (`data-tally-width=420`, `data-tally-hide-title=1`)
-- `embed.js` einmalig am Ende des `<body>`, nicht pro Card
+- `card.ts`: Card-Markup mit `<button data-form-id="{formId}">`
+- Popup-Parameter festlegen (`width: 420`, `hideTitle: true` in `tally.js`)
+- `tally.js` einmalig am Ende des `<body>`, nicht pro Card
 - CSS: Grid, Card-Rahmen, responsive Breakpoints
 
 **Fertig wenn**: Alle Formulare sind auf der Seite ausfüllbar.
@@ -189,9 +191,15 @@ Geschätzter Gesamtaufwand: **3.5–4.5h**.
   liest beliebige Keys schon heute.
 - **Vergangene Workshops** werden ausgeblendet, **ausgebuchte** (`freeSpots=0`)
   erscheinen mit Hinweis, aber ohne Anmelde-Button.
-- **Darstellung des Formulars**: als Popup über `data-tally-open`, nicht inline.
+- **Darstellung des Formulars**: als Popup über `data-form-id`, nicht inline.
   Damit entfällt die Frage nach der Höhenzuordnung mehrerer `dynamicHeight`-iframes
   ganz, und die Seite lädt vor dem ersten Klick kein Formular.
+- **Eigenes `tally.js` statt `data-tally-open`**: das Embed bindet sich zwar
+  selbst an dieses Attribut, kennt aber keinen Ladezustand — und ein Klick vor
+  dem Laden von `embed.js` geht dort verloren. Mit eigenem Handler gehört der
+  Klick uns: Button auf `aria-busy`, Embed nachladen, Popup öffnen, Zustand
+  lösen, sobald das iframe geladen ist. Nebeneffekt: `embed.js` wird erst beim
+  Klick geholt — genau das behauptet die Datenschutzerklärung.
 - **`freeSpots` wird manuell in Tally gepflegt** und zählt bei einer Anmeldung
   nicht selbst herunter — so gewollt. Die Zahl im Hidden Field ist die Wahrheit,
   der Worker rechnet nichts daraus ab. Eine unlesbare Zahl (Tippfehler) gilt als
@@ -202,8 +210,8 @@ Geschätzter Gesamtaufwand: **3.5–4.5h**.
   Datum, Preis, Ort und der Ausgebucht-Zustand für Google lesbar — ohne Markup
   stehen sie nur als Fliesstext da.
 - **Impressum und Datenschutz** als eigene Routen mit Footer-Link. Nötig, weil
-  die Startseite `tally.so/widgets/embed.js` von einem Drittanbieter lädt. Auf
-  den Rechtstexten selbst wird das Script nicht eingebunden.
+  die Startseite beim Klick `tally.so/widgets/embed.js` von einem Drittanbieter
+  nachlädt. Auf den Rechtstexten selbst wird nicht einmal `tally.js` eingebunden.
 - **`robots.txt` und `sitemap.xml` kommen aus dem Worker**, nicht aus `./public`:
   beide enthalten absolute URLs und stimmen so auf jeder Domain, auch bevor die
   Custom Domain steht.
@@ -217,19 +225,20 @@ Geschätzter Gesamtaufwand: **3.5–4.5h**.
   sie findet eine Kartensuche nur den Platz, nicht das Studio. Was fehlt, ist
   `null` und wird weggelassen statt geraten: eine erfundene Angabe in
   strukturierten Daten ist schlechter als keine.
-- **Rechtsform**: Das Impressum hat noch einen sichtbaren Platzhalter für den
-  Handelsregister-Abschnitt. Ohne Eintrag kann der Abschnitt ganz weg — mit
-  Eintrag gehören Firmenname, UID und Sitz hinein.
+- **Datenschutzerklärung**: zwei Platzhalter offen — welche Felder das
+  Tally-Formular erhebt und wie lange die Angaben aufbewahrt werden. Das
+  Impressum ist vollständig; einen Abschnitt zu Rechtsform und Register gibt es
+  bewusst nicht, weil kein Handelsregistereintrag besteht.
 - **Uhrzeit der Workshops**: `Event.startDate` ist bisher nur datumsgenau, weil
   die Zeit nirgends in den Daten steht. Ein Hidden Field `time=10:00` wäre der
   Weg — `parseHiddenFields()` liest beliebige Keys bereits heute.
 - **Kontaktformular „Schreibe mir"**: ein festes Tally-Formular, das über
-  `data-tally-open` als Popup erscheint — derselbe Weg wie die Anmelde-Buttons.
+  `data-form-id` als Popup erscheint — derselbe Weg wie die Anmelde-Buttons.
   Die ID gehört in die Konstante `CONTACT_FORM_ID` in `schedule.ts`; solange
   sie leer ist, steht dort ein Hinweis statt des Buttons.
 - **Logo**: aktuell die Wortmarke „Naira Tufting" als Text. Ein echtes Logo
   ersetzt die Konstante `WORDMARK` in `layout.ts` — und `favicon.svg`.
-- **Bilder**: Carousel (3:2), 2×2-Raster (4:3) und Porträt (3:4) sind
+- **Bilder**: Carousel (3:2), Intro-Bilder (4:3) und Porträt (3:4) sind
   Platzhalter-SVGs. Die vier Rasterbilder tragen `alt=""`, weil sie als
   Platzhalter dekorativ sind; echte Fotos brauchen je einen eigenen Alt-Text.
   `og-image.png` ist typografisch gesetzt und gehört durch ein echtes Foto

@@ -14,7 +14,7 @@ export const LOW_SPOTS_THRESHOLD = 3
 const FORM_ID_PATTERN = /^[A-Za-z0-9_-]+$/
 
 /**
- * Die ID landet in `data-tally-open` und in der Angebots-URL des JSON-LD.
+ * Die ID landet in `data-form-id` und in der Angebots-URL des JSON-LD.
  * Geprüft wird deshalb einmal hier, nicht in jeder View einzeln.
  */
 export function hasUsableId(id: string): boolean {

@@ -19,7 +19,8 @@ function notice(workshop: Workshop): string | null {
 }
 
 /**
- * Das Formular öffnet als Popup: embed.js bindet sich an data-tally-open.
+ * Das Formular öffnet als Popup: /tally.js bindet sich an data-form-id, lädt
+ * das Embed beim Klick nach und hält den Button bis dahin im Ladezustand.
  * Bei ausgebuchten Workshops gibt es keinen Button.
  *
  * aria-label statt nur "Anmelden", weil ein Screenreader die Buttons auch
@@ -34,9 +35,7 @@ function action(workshop: Workshop): Html | string {
   return html`<button
       type="button"
       class="button card__cta"
-      data-tally-open="${workshop.id}"
-      data-tally-width="420"
-      data-tally-hide-title="1"
+      data-form-id="${workshop.id}"
       aria-haspopup="dialog"
       aria-label="Anmelden: Workshop vom ${formatDate(workshop.date)}"
     >
@@ -56,8 +55,12 @@ export function renderCard(workshop: Workshop): Html {
 
   // Der Formularname aus Tally ist ein interner Bezeichner und erscheint nicht.
   // Das Datum ist der Titel der Card.
+  // "Workshop am" steht im h3, nicht als eigener Absatz davor: die Überschrift
+  // liest sich damit als ganzer Satz — "Workshop am 22.08.2026" — statt als
+  // nacktes Datum, und die Vorzeile bleibt trotzdem eine eigene Zeile.
   return html`<article class="card" data-state="${workshop.state}">
       <h3 class="card__title">
+        <span class="card__kicker">Workshop am</span>
         <time datetime="${workshop.date}">${formatDate(workshop.date)}</time>
       </h3>
       ${text ? html`<p class="card__notice">${text}</p>` : ''}

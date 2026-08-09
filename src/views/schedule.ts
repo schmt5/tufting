@@ -24,7 +24,7 @@ const CONTACT_FORM_ID = ''
 
 /**
  * Kontaktformular als Tally-Popup, gleicher Weg wie die Anmelde-Buttons der
- * Cards: embed.js bindet sich an data-tally-open, geladen wird erst beim Klick.
+ * Cards: /tally.js bindet sich an data-form-id, geladen wird erst beim Klick.
  */
 function contact(): Html {
   if (!CONTACT_FORM_ID) {
@@ -34,9 +34,7 @@ function contact(): Html {
   return html`<button
       type="button"
       class="button contact__open"
-      data-tally-open="${CONTACT_FORM_ID}"
-      data-tally-width="420"
-      data-tally-hide-title="1"
+      data-form-id="${CONTACT_FORM_ID}"
       aria-haspopup="dialog"
     >
       ${CONTACT_LABEL}

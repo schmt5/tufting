@@ -41,7 +41,7 @@ umgefärbt werden.
 | `--paper` | `#ffffff` | Seitenhintergrund. Die einzige Fläche. | — |
 | `--ink` | `#000000` | Primärfarbe: Titel, Fliesstext, Button-Fläche, starke Linien | 21:1 |
 | `--ink-muted` | `#595959` | Sekundärtext: Datum, Hinweistexte | 7.0:1 |
-| `--ink-faint` | `#767676` | Zurückgenommener Zustand (ausgebuchte Card) | 4.6:1 |
+| `--ink-faint` | `#767676` | Zurückgenommener Zustand (ausgebuchte Card, ladender Button) | 4.6:1 |
 | `--rule` | `#e0e0e0` | Haarlinien ohne Bedeutung | 1.3:1 |
 
 `--ink-faint` ist die dunkelste Graustufe, die noch klar über der AA-Grenze von
@@ -113,7 +113,8 @@ in der Anzeige, ISO im `datetime`-Attribut.
 | `--space-16` | `4rem` (64px) |
 
 Der Abstand zwischen zwei Cards ist grösser als jeder Abstand innerhalb einer
-Card. Das ist die ganze Gruppierungslogik — sie ersetzt den Rahmen.
+Card. Bei den Terminen kommt die Kante des Kastens dazu; überall sonst trägt
+der Abstand die Gruppierung allein.
 
 ## 5. Layout
 
@@ -124,7 +125,7 @@ Eine Seite, sechs Bereiche, in dieser Reihenfolge:
 │ Naira Tufting      Workshops  Über mich │  .site-header  (1px Linie in --ink)
 ├─────────────────────────────────────────┤
 │ Carousel                                │  section, aria-label
-│ Workshops Stadt Bern    + Bildraster    │  section#workshops    ← h1
+│ Workshops Stadt Bern    + drei Bilder   │  section#workshops    ← h1
 │ Wähle deinen Workshoptag + Kontakt      │  section#termine
 │ Ich bin Naira           + Porträt       │  section#ueber-mich
 ├─────────────────────────────────────────┤
@@ -135,14 +136,15 @@ Eine Seite, sechs Bereiche, in dieser Reihenfolge:
 - `--measure: 60rem` — maximale Inhaltsbreite. Jede Section, der Header und der
   Footer legen ihren Inhalt in ein `.wrap`; die Trennlinien von Header und
   Footer laufen dagegen über die volle Fensterbreite.
-- `--card-min: 16rem` — Mindestbreite einer Card. Auf `--measure` ergibt das
-  genau drei Spalten, wie im Entwurf.
 - `--carousel-item: 20rem` — Breite eines Bildes im Carousel, auf schmalen
   Schirmen auf `100%` gedeckelt.
-- Grid: `repeat(auto-fit, minmax(var(--card-min), 1fr))`. Keine Media Queries
-  für die Spaltenzahl; sie ergibt sich aus der Breite.
-- Vertikaler Abstand im Grid (`--space-12`) ist grösser als der horizontale
-  (`--space-8`), damit Zeilen nicht zu Blöcken verschmelzen.
+- Grid der Termine: `repeat(2, minmax(0, 1fr))` ab `48rem`, darunter eine
+  Spalte. Zwei feste Spalten statt `auto-fit`, damit eine Card immer gleich
+  breit ist — bei `auto-fit` füllte ein einzelner Termin die ganze Zeile und
+  sähe je nach Anzahl anders aus.
+- Abstand im Grid: `--space-8` in beide Richtungen. Die Cards sind jetzt
+  Kästen; ihre Kante trennt die Zeilen, dafür braucht es keinen grösseren
+  vertikalen Abstand mehr.
 - **Sections trennt Weissraum, keine Linie**: `padding-block: --space-16`, also
   8rem zwischen zwei Inhalten. Farbige Bänder wie im Entwurf gibt es nicht —
   siehe Regel 2.
@@ -193,13 +195,21 @@ Ebene: aktuell nur „Kosten".
 ### Card `.card`
 
 ```
-──────────────────────────  ← border-top: 1px solid var(--ink)
-22.08.2026                    h2, --text-lg / 600 — das Datum IST der Titel
-NUR NOCH 2 PLÄTZE FREI        Status-Label, optional
-┌────────────┐
-│  Anmelden  │                Button, optional
-└────────────┘
+┌──────────────────────────┐  ← border: 1px solid var(--ink), padding --space-6
+│ WORKSHOP AM              │    Vorzeile, --text-xs / --ink-muted
+│ 22.08.2026               │    h3, --text-lg / 600 — das Datum IST der Titel
+│ NUR NOCH 2 PLÄTZE FREI   │    Status-Label, optional
+│ ┌────────────┐           │
+│ │  Anmelden  │           │    Button, optional
+│ └────────────┘           │
+└──────────────────────────┘
 ```
+
+Die Vorzeile „Workshop am" steht **im** `h3`, nicht als eigener Absatz davor:
+die Überschrift liest sich damit als ganzer Satz statt als nacktes Datum. Sie
+trägt dieselbe Kleinschrift wie Status-Label und Zwischentitel — eine zweite
+Sorte gibt es nicht — bleibt aber in `--ink-muted`, damit das Datum die Zeile
+ist, die man zuerst liest.
 
 **Der Titel der Card ist das Datum.** Die Workshops haben keinen eigenen Namen;
 der Formularname aus Tally ist ein interner Bezeichner und erscheint nirgends.
@@ -208,9 +218,11 @@ Das Datum steht als `<time datetime="YYYY-MM-DD">` im `h2` — sichtbar
 des Buttons das Datum und nicht den Formularnamen: ein Screenreader soll nichts
 vorlesen, was auf dem Bildschirm nicht steht.
 
-Kein Rahmen, kein Hintergrund, kein Schatten. Die Card ist eine Spalte unter
-einer Linie. Der Button wird per `margin-top: auto` nach unten geschoben, damit
-die Buttons einer Grid-Zeile auf einer Höhe stehen.
+Die Card ist ein Kasten: `1px`-Rahmen rundum in `--ink`, `--space-6` Innen­abstand,
+Fläche `--paper`. Kein Schatten, keine Rundung, kein zweiter Farbwert — sie hebt
+sich über ihre Kante ab, nicht über eine Tönung. Der Button wird per
+`margin-top: auto` nach unten geschoben, damit die Buttons einer Grid-Zeile auf
+einer Höhe stehen.
 
 Die Card ist **nicht** als Ganzes klickbar. Nur der Button löst etwas aus.
 
@@ -224,8 +236,8 @@ Kleine Versalien mit weiter Laufweite. Erscheint in drei Fällen:
 | `low` | „Nur noch 2 Plätze frei“ | „Anmelden“ |
 | `soldOut` | „Ausgebucht“ | keiner |
 
-Bei `soldOut` nimmt sich die ganze Card zurück: Textfarbe `--ink-faint`, die
-obere Linie fällt auf `--rule` zurück. Sie verschwindet nicht — ein vergebener
+Bei `soldOut` nimmt sich die ganze Card zurück: Textfarbe `--ink-faint`, der
+Rahmen fällt auf `--rule` zurück. Sie verschwindet nicht — ein vergebener
 Platz ist eine Information.
 
 ### Button `.button`
@@ -243,13 +255,30 @@ keine Rundung, `1px`-Rahmen in `--ink`.
 - Mindesthöhe `2.75rem` (44px) als Zielgrösse für den Finger.
 - Übergang `120ms ease` auf Farbe.
 
+#### Ladezustand `[aria-busy='true']`
+
+Zwischen Klick und sichtbarem Formular liegen das Nachladen des Tally-Embeds und
+das Laden des iframes — ohne Rückmeldung sähe der Button aus, als hätte er den
+Klick verschluckt. Solange gilt:
+
+- Fläche und Rahmen auf `--ink-faint`, Text bleibt `--paper`, `cursor: progress`.
+  Hover invertiert dabei nicht: es gibt gerade nichts zu drücken.
+- Die Beschriftung wechselt auf „Öffnet …". **Kein Spinner** — damit bleibt es
+  bei der einen erlaubten Bewegung, dem Farbübergang.
+- Der Zustand steht als `aria-busy` im Markup, nicht als Klasse. Gleiche Linie
+  wie `data-state` an der Card: Hilfstechnik liest ihn mit.
+
+Gesetzt und wieder entfernt wird er in `public/tally.js`; entfernt erst, wenn das
+iframe geladen ist — Tallys eigenes `onOpen` feuert schon bei der noch weissen
+Fläche.
+
 ### Kontakt `.contact-block`
 
 Der Weg für Leute, denen kein Termin passt: ein Satz, darunter der Button
 „Schreibe mir".
 
 Der Button ist derselbe wie auf den Cards und öffnet dasselbe Tally-Popup über
-`data-tally-open` — es braucht deshalb kein eigenes Overlay, keinen
+`data-form-id` — es braucht deshalb kein eigenes Overlay, keinen
 `:target`-Dialog und kein `<dialog>`. Die Formular-ID steht fest in
 `schedule.ts` (`CONTACT_FORM_ID`); im Gegensatz zu den Workshops wird sie nicht
 über die API gesucht.
@@ -438,8 +467,9 @@ Diese Liste existiert, damit „nur dieses eine Mal“ nicht passiert:
 - Farbe als Bedeutungsträger
 - Animationen ausser dem Farbübergang an Buttons und Punkten und dem
   weichen Scrollen von Seite und Galerie
-- JavaScript für Layout oder Interaktion — das Tally-Embed bleibt die einzige
-  Ausnahme, das Carousel kommt ohne aus
+- JavaScript für Layout oder Interaktion — Ausnahme bleibt allein das
+  Tally-Popup samt seinem Ladezustand (`public/tally.js`), das Carousel kommt
+  ohne aus
 - Icons ohne Textentsprechung
 - klickbare Cards, Hover-Effekte auf ganzen Blöcken
 - Autoplay in der Galerie
@@ -453,6 +483,7 @@ Diese Liste existiert, damit „nur dieses eine Mal“ nicht passiert:
 |---|---|
 | `DESIGN_GUIDE.md` | dieses Dokument — die Entscheidungen |
 | `public/style.css` | Tokens und Regeln, gliedert sich nach §2–6 |
+| `public/tally.js` | Öffnet die Formulare als Popup, hält den Button dabei im Ladezustand |
 | `public/fonts/inter-latin-var.woff2` | Inter Variable, Latin-Subset |
 | `public/fonts/inter-OFL.txt` | Lizenz, muss bei der Font-Datei bleiben |
 | `public/img/carousel-*.svg` | Platzhalter des Carousels (3:2) — durch echte Bilder ersetzen |
@@ -462,7 +493,7 @@ Diese Liste existiert, damit „nur dieses eine Mal“ nicht passiert:
 | `public/og-image.png` | Link-Vorschau 1200×630, typografisch — durch ein echtes Bild ersetzen |
 | `src/views/layout.ts` | Skeleton, Head, Meta-Schicht, Seitenkopf, Footer |
 | `src/views/gallery.ts` | Bildliste und Carousel-Markup |
-| `src/views/intro.ts` | Section „Tufting-Workshops in Bern": Text, Fakten, Preise, Bildraster |
+| `src/views/intro.ts` | Section „Tufting-Workshops in Bern": Text, Fakten, Preise, Bilder |
 | `src/views/schedule.ts` | Section „Wähle deinen Workshoptag": Grid und Kontakt |
 | `src/views/card.ts` | Card-Markup und Zustandslogik |
 | `src/views/about.ts` | Section „Ich bin Naira" |

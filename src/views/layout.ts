@@ -33,8 +33,9 @@ export interface LayoutOptions {
   /** Fehlerseiten gehören nicht in den Index. */
   noindex?: boolean
   /**
-   * Tally-Embed einbinden. Nur dort true, wo es auch einen Button gibt — die
-   * Rechtstexte laden damit kein Script eines Drittanbieters.
+   * Tally-Anbindung einbinden. Nur dort true, wo es auch einen Button gibt.
+   * Geladen wird dabei nur das eigene /tally.js; das Embed des Drittanbieters
+   * holt es erst beim Klick nach.
    */
   tally?: boolean
 }
@@ -156,7 +157,7 @@ export function layout(options: LayoutOptions, content: Html | string): Html {
           </div>
         </footer>
 
-        ${options.tally ? html`<script async src="https://tally.so/widgets/embed.js"></script>` : ''}
+        ${options.tally ? html`<script type="module" src="/tally.js"></script>` : ''}
       </body>
     </html>`
 }
