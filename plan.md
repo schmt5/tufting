@@ -3,8 +3,9 @@
 ## 1. Ziel
 
 Eine öffentlich erreichbare Webseite, die alle Tally-Formulare eines Workspace als
-Card-Grid darstellt. Jede Card enthält das eingebettete Formular, sodass Besucher
-direkt auf der Seite ausfüllen können — ohne Umweg über tally.so.
+Card-Grid darstellt. Jede Card führt auf eine Unterseite mit dem eingebetteten
+Formular, sodass Besucher direkt auf der Seite ausfüllen können — ohne Umweg
+über tally.so.
 
 Die Formularliste wird zur Request-Zeit aus der Tally-API gelesen. Ein neues
 Formular in Tally erscheint damit ohne Deploy auf der Seite.
@@ -29,7 +30,10 @@ Formular in Tally erscheint damit ohne Deploy auf der Seite.
   `Tally.loadEmbeds()` manuell und in der richtigen Reihenfolge nachgezogen
   werden. Server-Rendering vermeidet diese Abhängigkeit vollständig.
 - **Caching (KV / Cache API)**: Bei ~17 Requests pro Tag kein Gegenwert.
-  Nachrüstbar, falls die API-Latenz beim Seitenaufbau störend wirkt.
+  Nachrüstbar, falls die API-Latenz beim Seitenaufbau störend wirkt — und
+  inzwischen der nächste Kandidat: seit es die Anmeldeseiten gibt, fragen zwei
+  Routen die API, und ein Seitenaufbau kostet eine Anfrage je Formular. Tally
+  drosselt bei 100 Anfragen pro Minute (im Development schon einmal erreicht).
 
 ## 3. Architektur
 
@@ -38,22 +42,24 @@ Browser ──GET /──> Worker (Hono)
                      │
                      ├─ fetch api.tally.so/forms   (Bearer, serverseitig)
                      │
-                     └─ HTML mit n × <button data-form-id="{formId}">
+                     └─ HTML mit n × <a href="/anmeldung/{formId}">
                           │
-Browser ─────────────────┴──> /tally.js
-                                 └─ Klick auf Button → Ladezustand,
-                                    embed.js nachladen, Formular als Popup
+Browser ──GET /anmeldung/{id}──> Worker prüft die ID gegen die Terminliste
+                          │
+                          └─ HTML mit <iframe src="tally.so/embed/{id}?…">
+                             + /tally.js → embed.js → Höhe per iframe-resizer
 ```
 
-Die Formulare werden **nicht** inline eingebettet, sondern öffnen als Popup. Vor dem
-ersten Klick lädt damit kein einziges Formular — unabhängig davon, wie viele Cards
-auf der Seite stehen.
+Auf der Startseite lädt **kein** Formular, egal wie viele Cards dort stehen. Erst
+die Unterseite holt eines — und dort nur dieses eine.
 
 ### Routen
 
 | Route | Zweck |
 |---|---|
 | `GET /` | ganze Seite, server-rendered |
+| `GET /anmeldung/{formId}` | Anmeldeseite eines Termins mit eingebettetem Formular |
+| `GET /kontakt` | Kontaktformular, nur wenn `CONTACT_FORM_ID` gesetzt ist |
 | `GET /impressum`, `/datenschutz` | Rechtstexte, ohne Tally-Embed |
 | `GET /robots.txt`, `/sitemap.xml` | aus dem Worker, weil sie absolute URLs enthalten |
 | alles andere | gestaltete 404 mit `noindex` |
@@ -88,11 +94,12 @@ Fehler abfangen, leeres Grid mit Hinweistext rendern, Fehler nach Sentry.
 │       ├── intro.ts      # Section "Tufting-Workshops in Bern"
 │       ├── schedule.ts   # Section "Wähle deinen Workshoptag" + Kontakt
 │       ├── card.ts       # eine Form-Card
+│       ├── signup.ts     # Formularseiten: Anmeldung je Termin, Kontakt
 │       ├── about.ts      # Section "Ich bin Naira"
 │       └── legal.ts      # Impressum, Datenschutz, 404
 ├── public/
 │   ├── style.css         # Tokens und Regeln, siehe DESIGN_GUIDE.md
-│   ├── tally.js          # Popup öffnen, Button bis dahin im Ladezustand
+│   ├── tally.js          # startet die Embeds der Formularseiten
 │   ├── fonts/            # Inter (Latin-Subset, self-hosted) + OFL-Lizenz
 │   ├── img/              # Carousel, Intro-Bilder, Porträt (aktuell Platzhalter)
 │   ├── favicon.svg       # Wortmarke als N, dazu .ico und apple-touch-icon
@@ -154,9 +161,10 @@ der Zieldomain und die Custom Domain selbst.
 
 ### Phase 3 — Cards und Embed (1–2h)
 
-- `card.ts`: Card-Markup mit `<button data-form-id="{formId}">`
-- Popup-Parameter festlegen (`width: 420`, `hideTitle: true` in `tally.js`)
-- `tally.js` einmalig am Ende des `<body>`, nicht pro Card
+- `card.ts`: Card-Markup mit `<a href="/anmeldung/{formId}">`
+- Embed-Parameter festlegen (`alignLeft`, `hideTitle`, `transparentBackground`,
+  `dynamicHeight` — siehe `signup.ts`)
+- `tally.js` einmalig am Ende des `<body>` der Formularseiten
 - CSS: Grid, Card-Rahmen, responsive Breakpoints
 
 **Fertig wenn**: Alle Formulare sind auf der Seite ausfüllbar.
@@ -191,15 +199,23 @@ Geschätzter Gesamtaufwand: **3.5–4.5h**.
   liest beliebige Keys schon heute.
 - **Vergangene Workshops** werden ausgeblendet, **ausgebuchte** (`freeSpots=0`)
   erscheinen mit Hinweis, aber ohne Anmelde-Button.
-- **Darstellung des Formulars**: als Popup über `data-form-id`, nicht inline.
-  Damit entfällt die Frage nach der Höhenzuordnung mehrerer `dynamicHeight`-iframes
-  ganz, und die Seite lädt vor dem ersten Klick kein Formular.
-- **Eigenes `tally.js` statt `data-tally-open`**: das Embed bindet sich zwar
-  selbst an dieses Attribut, kennt aber keinen Ladezustand — und ein Klick vor
-  dem Laden von `embed.js` geht dort verloren. Mit eigenem Handler gehört der
-  Klick uns: Button auf `aria-busy`, Embed nachladen, Popup öffnen, Zustand
-  lösen, sobald das iframe geladen ist. Nebeneffekt: `embed.js` wird erst beim
-  Klick geholt — genau das behauptet die Datenschutzerklärung.
+- **Darstellung des Formulars**: eingebettet auf einer eigenen Unterseite, nicht
+  als Popup. Das Popup war der erste Weg und ist daran gescheitert, dass die
+  Formulare länger sind, als ein Overlay hoch ist: man scrollt in einem Kasten
+  im Kasten und sieht nie das ganze Formular. Auf einer eigenen Seite wächst das
+  iframe per `dynamicHeight` auf seine volle Höhe, die Adresse ist teilbar, und
+  der Zurück-Weg ist der Zurück-Knopf des Browsers. Die Startseite bleibt frei
+  von Formularen — sie verlinkt nur.
+- **`src` am iframe, nicht `data-tally-src`**: `embed.js` behandelt genau zwei
+  Fälle — `data-tally-src` ohne `src` (Start über einen IntersectionObserver)
+  und `src` ohne `data-tally-src` (Resizer sofort). Beide Attribute zusammen
+  fallen durch beide Raster, das iframe bliebe auf seiner Anfangshöhe stehen.
+  Mit `src` lädt das Formular ausserdem ohne JavaScript, dann eben mit fester
+  Höhe und eigenem Scrollbalken.
+- **Die ID wird gegen die Terminliste geprüft**, nicht nur gegen ein Muster:
+  sonst bettete `/anmeldung/{id}` jedes beliebige fremde Tally-Formular ein.
+  Fällt die API aus, antwortet die Route mit 503 statt mit einer 404 — dass es
+  den Termin nicht gibt, weiss die Seite in dem Moment nämlich nicht.
 - **`freeSpots` wird manuell in Tally gepflegt** und zählt bei einer Anmeldung
   nicht selbst herunter — so gewollt. Die Zahl im Hidden Field ist die Wahrheit,
   der Worker rechnet nichts daraus ab. Eine unlesbare Zahl (Tippfehler) gilt als
@@ -232,10 +248,10 @@ Geschätzter Gesamtaufwand: **3.5–4.5h**.
 - **Uhrzeit der Workshops**: `Event.startDate` ist bisher nur datumsgenau, weil
   die Zeit nirgends in den Daten steht. Ein Hidden Field `time=10:00` wäre der
   Weg — `parseHiddenFields()` liest beliebige Keys bereits heute.
-- **Kontaktformular „Schreibe mir"**: ein festes Tally-Formular, das über
-  `data-form-id` als Popup erscheint — derselbe Weg wie die Anmelde-Buttons.
-  Die ID gehört in die Konstante `CONTACT_FORM_ID` in `schedule.ts`; solange
-  sie leer ist, steht dort ein Hinweis statt des Buttons.
+- **Kontaktformular „Schreibe mir"**: ein festes Tally-Formular auf `/kontakt`
+  — derselbe Weg wie die Anmeldung. Die ID gehört in die Konstante
+  `CONTACT_FORM_ID` in `site.ts`; solange sie leer ist, gibt es die Route nicht
+  und im Kontaktblock steht ein Hinweis statt des Links.
 - **Logo**: aktuell die Wortmarke „Naira Tufting" als Text. Ein echtes Logo
   ersetzt die Konstante `WORDMARK` in `layout.ts` — und `favicon.svg`.
 - **Bilder**: Carousel (3:2), Intro-Bilder (4:3) und Porträt (3:4) sind

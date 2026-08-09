@@ -41,7 +41,7 @@ umgefärbt werden.
 | `--paper` | `#ffffff` | Seitenhintergrund. Die einzige Fläche. | — |
 | `--ink` | `#000000` | Primärfarbe: Titel, Fliesstext, Button-Fläche, starke Linien | 21:1 |
 | `--ink-muted` | `#595959` | Sekundärtext: Datum, Hinweistexte | 7.0:1 |
-| `--ink-faint` | `#767676` | Zurückgenommener Zustand (ausgebuchte Card, ladender Button) | 4.6:1 |
+| `--ink-faint` | `#767676` | Zurückgenommener Zustand (ausgebuchte Card) | 4.6:1 |
 | `--rule` | `#e0e0e0` | Haarlinien ohne Bedeutung | 1.3:1 |
 
 `--ink-faint` ist die dunkelste Graustufe, die noch klar über der AA-Grenze von
@@ -200,7 +200,7 @@ Ebene: aktuell nur „Kosten".
 │ 22.08.2026               │    h3, --text-lg / 600 — das Datum IST der Titel
 │ NUR NOCH 2 PLÄTZE FREI   │    Status-Label, optional
 │ ┌────────────┐           │
-│ │  Anmelden  │           │    Button, optional
+│ │  Anmelden  │           │    Link auf /anmeldung/…, optional
 │ └────────────┘           │
 └──────────────────────────┘
 ```
@@ -224,7 +224,8 @@ sich über ihre Kante ab, nicht über eine Tönung. Der Button wird per
 `margin-top: auto` nach unten geschoben, damit die Buttons einer Grid-Zeile auf
 einer Höhe stehen.
 
-Die Card ist **nicht** als Ganzes klickbar. Nur der Button löst etwas aus.
+Die Card ist **nicht** als Ganzes klickbar. Nur der Anmelde-Link führt weiter —
+auf die Anmeldeseite dieses Termins, nicht in ein Overlay.
 
 ### Status-Label `.card__notice`
 
@@ -235,6 +236,9 @@ Kleine Versalien mit weiter Laufweite. Erscheint in drei Fällen:
 | `open` | kein Label | „Anmelden“ |
 | `low` | „Nur noch 2 Plätze frei“ | „Anmelden“ |
 | `soldOut` | „Ausgebucht“ | keiner |
+
+Der Anmelde-Button ist ein `<a>`, kein `<button>`: er führt auf eine eigene
+Seite. Damit funktionieren Zurück-Knopf, neuer Tab und das Teilen der Adresse.
 
 Bei `soldOut` nimmt sich die ganze Card zurück: Textfarbe `--ink-faint`, der
 Rahmen fällt auf `--rule` zurück. Sie verschwindet nicht — ein vergebener
@@ -255,36 +259,34 @@ keine Rundung, `1px`-Rahmen in `--ink`.
 - Mindesthöhe `2.75rem` (44px) als Zielgrösse für den Finger.
 - Übergang `120ms ease` auf Farbe.
 
-#### Ladezustand `[aria-busy='true']`
-
-Zwischen Klick und sichtbarem Formular liegen das Nachladen des Tally-Embeds und
-das Laden des iframes — ohne Rückmeldung sähe der Button aus, als hätte er den
-Klick verschluckt. Solange gilt:
-
-- Fläche und Rahmen auf `--ink-faint`, Text bleibt `--paper`, `cursor: progress`.
-  Hover invertiert dabei nicht: es gibt gerade nichts zu drücken.
-- Die Beschriftung wechselt auf „Öffnet …". **Kein Spinner** — damit bleibt es
-  bei der einen erlaubten Bewegung, dem Farbübergang.
-- Der Zustand steht als `aria-busy` im Markup, nicht als Klasse. Gleiche Linie
-  wie `data-state` an der Card: Hilfstechnik liest ihn mit.
-
-Gesetzt und wieder entfernt wird er in `public/tally.js`; entfernt erst, wenn das
-iframe geladen ist — Tallys eigenes `onOpen` feuert schon bei der noch weissen
-Fläche.
+`.button` gilt für `<a>` und `<button>` gleichermassen. Die Formular-Buttons
+sind Links, der Rest der Seite hat keine.
 
 ### Kontakt `.contact-block`
 
 Der Weg für Leute, denen kein Termin passt: ein Satz, darunter der Button
 „Schreibe mir".
 
-Der Button ist derselbe wie auf den Cards und öffnet dasselbe Tally-Popup über
-`data-form-id` — es braucht deshalb kein eigenes Overlay, keinen
-`:target`-Dialog und kein `<dialog>`. Die Formular-ID steht fest in
-`schedule.ts` (`CONTACT_FORM_ID`); im Gegensatz zu den Workshops wird sie nicht
-über die API gesucht.
+Der Button ist derselbe wie auf den Cards und führt auf `/kontakt` — dieselbe
+Formularseite wie die Anmeldung. Die Formular-ID steht fest in `site.ts`
+(`CONTACT_FORM_ID`); im Gegensatz zu den Workshops wird sie nicht über die API
+gesucht.
 
-Solange die ID fehlt, erscheint statt des Buttons der Hinweis
-`.contact__pending`. Ein Button, der nichts öffnet, wäre schlimmer als keiner.
+Solange die ID fehlt, gibt es die Seite nicht und statt des Links steht der
+Hinweis `.contact__pending`. Ein Link ins Leere wäre schlimmer als keiner.
+
+### Formularseite `.embed-wrap`
+
+Eigene Seite pro Formular (`/anmeldung/{id}`, `/kontakt`) statt Popup: die
+Formulare sind länger, als ein Overlay hoch ist. Im Overlay scrollt man in einem
+Kasten im Kasten und sieht nie das Ganze. Auf einer eigenen Seite wächst das
+iframe per `dynamicHeight` auf seine volle Höhe, und gescrollt wird die Seite.
+
+Aufbau: `.back`-Link zurück zu den Terminen (`--text-xs`, Pfeil aus dem CSS —
+ein Screenreader liest „Alle Termine", nicht „Pfeil links"), `h1` „Anmeldung",
+darunter das Datum als `.lead`, dann das Formular. Das iframe ist auf
+`--measure-text` gedeckelt und rahmenlos; seine Höhe kommt vom Embed und wird
+im CSS nicht angefasst.
 
 ### Über mich `.about`
 
@@ -468,7 +470,7 @@ Diese Liste existiert, damit „nur dieses eine Mal“ nicht passiert:
 - Animationen ausser dem Farbübergang an Buttons und Punkten und dem
   weichen Scrollen von Seite und Galerie
 - JavaScript für Layout oder Interaktion — Ausnahme bleibt allein das
-  Tally-Popup samt seinem Ladezustand (`public/tally.js`), das Carousel kommt
+  Tally-Embed auf den Formularseiten (`public/tally.js`), das Carousel kommt
   ohne aus
 - Icons ohne Textentsprechung
 - klickbare Cards, Hover-Effekte auf ganzen Blöcken
@@ -483,7 +485,7 @@ Diese Liste existiert, damit „nur dieses eine Mal“ nicht passiert:
 |---|---|
 | `DESIGN_GUIDE.md` | dieses Dokument — die Entscheidungen |
 | `public/style.css` | Tokens und Regeln, gliedert sich nach §2–6 |
-| `public/tally.js` | Öffnet die Formulare als Popup, hält den Button dabei im Ladezustand |
+| `public/tally.js` | Startet die Embeds der Formularseiten (Höhe per iframe-resizer) |
 | `public/fonts/inter-latin-var.woff2` | Inter Variable, Latin-Subset |
 | `public/fonts/inter-OFL.txt` | Lizenz, muss bei der Font-Datei bleiben |
 | `public/img/carousel-*.svg` | Platzhalter des Carousels (3:2) — durch echte Bilder ersetzen |
@@ -496,6 +498,7 @@ Diese Liste existiert, damit „nur dieses eine Mal“ nicht passiert:
 | `src/views/intro.ts` | Section „Tufting-Workshops in Bern": Text, Fakten, Preise, Bilder |
 | `src/views/schedule.ts` | Section „Wähle deinen Workshoptag": Grid und Kontakt |
 | `src/views/card.ts` | Card-Markup und Zustandslogik |
+| `src/views/signup.ts` | Formularseiten: Anmeldung je Termin und Kontakt |
 | `src/views/about.ts` | Section „Ich bin Naira" |
 | `src/views/legal.ts` | Impressum, Datenschutz, 404 — `.prose--narrow` |
 

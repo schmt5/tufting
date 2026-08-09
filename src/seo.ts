@@ -13,9 +13,7 @@ import { raw } from 'hono/html'
 import { BUSINESS, hasAddress, SITE_ORIGIN, WORKSHOP } from './site.ts'
 import type { Workshop } from './workshops.ts'
 import type { Html } from './views/layout.ts'
-
-/** Öffentliche Formular-URL bei Tally — dorthin führt das `Offer`. */
-const TALLY_FORM_URL = 'https://tally.so/r/'
+import { signupPath } from './views/signup.ts'
 
 /**
  * Herkunft für absolute URLs. Steht `SITE_ORIGIN`, gewinnt sie; sonst die
@@ -76,12 +74,16 @@ function localBusiness(origin: string) {
   }
 }
 
-function offer(workshop: Workshop) {
+/**
+ * Das Angebot zeigt auf die eigene Anmeldeseite, nicht auf tally.so: dort steht
+ * dasselbe Formular, aber mit dem Kontext der Seite drumherum.
+ */
+function offer(workshop: Workshop, origin: string) {
   return {
     '@type': 'Offer',
     price: WORKSHOP.price,
     priceCurrency: WORKSHOP.currency,
-    url: `${TALLY_FORM_URL}${workshop.id}`,
+    url: `${origin}${signupPath(workshop.id)}`,
     availability:
       workshop.state === 'soldOut' ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock',
     // Ohne Enddatum wertet Google ein Angebot als unbefristet. Es gilt bis zum
@@ -114,7 +116,7 @@ function event(workshop: Workshop, origin: string) {
     // Verweis statt Wiederholung: die Adresse steht einmal im LocalBusiness.
     location: { '@id': `${origin}/#business` },
     organizer: { '@id': `${origin}/#business` },
-    offers: offer(workshop),
+    offers: offer(workshop, origin),
   }
 }
 

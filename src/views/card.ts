@@ -1,12 +1,7 @@
 import { html } from 'hono/html'
-import type { Workshop } from '../workshops.ts'
+import { formatWorkshopDate, type Workshop } from '../workshops.ts'
 import type { Html } from './layout.ts'
-
-/** ISO → DD.MM.YYYY, aus den Teilen zusammengesetzt statt über new Date(). */
-function formatDate(iso: string): string {
-  const [year, month, day] = iso.split('-')
-  return `${day}.${month}.${year}`
-}
+import { signupPath } from './signup.ts'
 
 function notice(workshop: Workshop): string | null {
   if (workshop.state === 'soldOut') return 'Ausgebucht'
@@ -19,11 +14,12 @@ function notice(workshop: Workshop): string | null {
 }
 
 /**
- * Das Formular öffnet als Popup: /tally.js bindet sich an data-form-id, lädt
- * das Embed beim Klick nach und hält den Button bis dahin im Ladezustand.
- * Bei ausgebuchten Workshops gibt es keinen Button.
+ * Ein Link, kein Button: das Formular steht auf einer eigenen Seite, weil es
+ * für ein Popup zu lang ist (siehe views/signup.ts). Damit funktionieren auch
+ * Zurück-Knopf, neuer Tab und das Teilen der Adresse.
+ * Bei ausgebuchten Workshops gibt es keinen Link.
  *
- * aria-label statt nur "Anmelden", weil ein Screenreader die Buttons auch
+ * aria-label statt nur "Anmelden", weil ein Screenreader die Links auch
  * ausserhalb ihrer Card vorliest und sie sonst nicht unterscheidbar wären.
  * Benannt wird das Datum, nicht der Formularname — nur das Datum steht auch
  * sichtbar auf der Card. Der Label beginnt mit dem sichtbaren Text, sonst
@@ -32,15 +28,13 @@ function notice(workshop: Workshop): string | null {
 function action(workshop: Workshop): Html | string {
   if (workshop.state === 'soldOut') return ''
 
-  return html`<button
-      type="button"
+  return html`<a
       class="button card__cta"
-      data-form-id="${workshop.id}"
-      aria-haspopup="dialog"
-      aria-label="Anmelden: Workshop vom ${formatDate(workshop.date)}"
+      href="${signupPath(workshop.id)}"
+      aria-label="Anmelden: Workshop vom ${formatWorkshopDate(workshop.date)}"
     >
       Anmelden
-    </button>`
+    </a>`
 }
 
 /**
@@ -61,7 +55,7 @@ export function renderCard(workshop: Workshop): Html {
   return html`<article class="card" data-state="${workshop.state}">
       <h3 class="card__title">
         <span class="card__kicker">Workshop am</span>
-        <time datetime="${workshop.date}">${formatDate(workshop.date)}</time>
+        <time datetime="${workshop.date}">${formatWorkshopDate(workshop.date)}</time>
       </h3>
       ${text ? html`<p class="card__notice">${text}</p>` : ''}
       ${action(workshop)}

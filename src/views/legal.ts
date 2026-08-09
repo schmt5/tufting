@@ -5,9 +5,9 @@ import type { Html } from './layout.ts'
 /**
  * Impressum und Datenschutzerklärung.
  *
- * Was sich aus dem Code ergibt, steht hier ausformuliert: die Seite lädt das
- * Embed-Script von Tally und läuft auf Cloudflare Workers — beides sind
- * Bearbeitungen, die genannt werden müssen. Alles, was nur die Betreiberin
+ * Was sich aus dem Code ergibt, steht hier ausformuliert: die Anmeldeseiten
+ * laden das Embed von Tally, und alles läuft auf Cloudflare Workers — beides
+ * sind Bearbeitungen, die genannt werden müssen. Alles, was nur die Betreiberin
  * weiss, steht als sichtbarer Platzhalter da und nicht als erfundener Satz.
  *
  * Das ist eine Vorlage, keine Rechtsberatung. Vor dem Aufschalten prüfen lassen.
@@ -91,10 +91,11 @@ export function renderPrivacy(): Html {
 
         <h2 class="section__title">Anmeldung und Kontakt über Tally</h2>
         <p>
-          Die Anmeldeformulare stammen von Tally (Tally BV, Belgien). Erst wenn du einen
-          Anmelde- oder Kontakt-Button anklickst, lädt dein Browser das Formular von
+          Die Anmeldeformulare stammen von Tally (Tally BV, Belgien). Sie stehen auf
+          eigenen Unterseiten: erst wenn du einen Anmelde- oder Kontakt-Button anklickst
+          und diese Seite öffnest, lädt dein Browser das Formular von
           <span translate="no">tally.so</span> und stellt dabei eine Verbindung zu diesem
-          Anbieter her. Vor dem Klick werden dorthin keine Formulardaten übertragen.
+          Anbieter her. Auf der Startseite und in den Rechtstexten passiert das nicht.
         </p>
         <p>
           Was du im Formular einträgst – ${todo('Felder auflisten, z.B. Name, E-Mail, Nachricht')} –

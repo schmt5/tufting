@@ -14,7 +14,8 @@ export const LOW_SPOTS_THRESHOLD = 3
 const FORM_ID_PATTERN = /^[A-Za-z0-9_-]+$/
 
 /**
- * Die ID landet in `data-form-id` und in der Angebots-URL des JSON-LD.
+ * Die ID landet in der Adresse der Anmeldeseite, in der Embed-URL und in der
+ * Angebots-URL des JSON-LD.
  * Geprüft wird deshalb einmal hier, nicht in jeder View einzeln.
  */
 export function hasUsableId(id: string): boolean {
@@ -86,6 +87,16 @@ export function parseWorkshopDate(raw: string | undefined): string | null {
   if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== iso) return null
 
   return iso
+}
+
+/**
+ * ISO `YYYY-MM-DD` → `DD.MM.YYYY`, aus den Teilen zusammengesetzt statt über
+ * `new Date()`. Steht hier statt in einer View, weil Card, Anmeldeseite und
+ * Seitentitel dasselbe Datum zeigen müssen.
+ */
+export function formatWorkshopDate(iso: string): string {
+  const [year, month, day] = iso.split('-')
+  return `${day}.${month}.${year}`
 }
 
 export function parseFreeSpots(raw: string | undefined): number | null {

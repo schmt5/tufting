@@ -1,4 +1,5 @@
 import { html } from 'hono/html'
+import { CONTACT_FORM_ID, CONTACT_PATH } from '../site.ts'
 import type { Html } from './layout.ts'
 
 /**
@@ -14,31 +15,18 @@ const CONTACT_TEXT =
 const CONTACT_LABEL = 'Schreibe mir'
 
 /**
- * ID des Tally-Kontaktformulars. Anders als die Workshops steht sie fest und
- * wird nicht über die API gesucht — es gibt genau dieses eine Formular.
+ * Kontaktformular auf einer eigenen Seite, gleicher Weg wie die Anmeldung:
+ * /kontakt rendert dasselbe Embed (views/signup.ts).
  *
- * Solange sie leer ist, erscheint statt des Buttons ein Hinweis. Ein Button,
- * der nichts öffnet, wäre schlimmer als gar keiner.
- */
-const CONTACT_FORM_ID = ''
-
-/**
- * Kontaktformular als Tally-Popup, gleicher Weg wie die Anmelde-Buttons der
- * Cards: /tally.js bindet sich an data-form-id, geladen wird erst beim Klick.
+ * Solange die Formular-ID fehlt, steht hier ein Hinweis statt des Links. Ein
+ * Link, der ins Leere führt, wäre schlimmer als keiner.
  */
 function contact(): Html {
   if (!CONTACT_FORM_ID) {
     return html`<p class="note contact__pending">Das Kontaktformular folgt.</p>`
   }
 
-  return html`<button
-      type="button"
-      class="button contact__open"
-      data-form-id="${CONTACT_FORM_ID}"
-      aria-haspopup="dialog"
-    >
-      ${CONTACT_LABEL}
-    </button>`
+  return html`<a class="button contact__open" href="${CONTACT_PATH}">${CONTACT_LABEL}</a>`
 }
 
 export function renderSchedule(cards: Html[], message: string | null): Html {

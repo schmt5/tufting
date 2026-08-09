@@ -51,6 +51,18 @@ export function hasAddress(business: Business = BUSINESS): boolean {
 }
 
 /**
+ * ID des Tally-Kontaktformulars. Anders als die Workshops steht sie fest und
+ * wird nicht über die API gesucht — es gibt genau dieses eine Formular.
+ *
+ * Solange sie leer ist, gibt es die Seite `/kontakt` nicht und im Kontaktblock
+ * steht ein Hinweis statt des Links.
+ */
+export const CONTACT_FORM_ID = ''
+
+/** Adresse der Kontaktseite. Route und Link lesen beide von hier. */
+export const CONTACT_PATH = '/kontakt'
+
+/**
  * Eckwerte eines Workshops. Stehen hier, weil sie an drei Stellen gebraucht
  * werden: im Fliesstext der Intro, im Preisblock und im `Offer` des JSON-LD.
  */

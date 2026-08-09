@@ -437,22 +437,32 @@ main:focus {
   margin-top: auto;
 }
 
-/* Ladezustand, während /tally.js das Embed nachlädt und das Popup öffnet.
-   Kein Spinner: die Beschriftung wechselt auf "Öffnet …", damit es bei der
-   einen erlaubten Bewegung bleibt (Farbübergang). */
-.button[aria-busy='true'],
-.button[aria-busy='true']:active {
-  color: var(--paper);
-  background: var(--ink-faint);
-  border-color: var(--ink-faint);
-  cursor: progress;
+/* --- Formularseite ------------------------------------------------------- */
+
+/* Zurück-Weg oben auf der Seite. Klein und zurückgenommen: der Inhalt ist das
+   Formular, nicht die Navigation. Der Pfeil steht im CSS, weil er Dekoration
+   ist — ein Screenreader liest "Alle Termine", nicht "Pfeil links". */
+.back {
+  font-size: var(--text-xs);
 }
 
-@media (hover: hover) {
-  .button[aria-busy='true']:hover {
-    color: var(--paper);
-    background: var(--ink-faint);
-  }
+.back a::before {
+  content: '← ';
+}
+
+/* Das Formular ist der Inhalt der Seite: eigene Breite, nicht die des
+   Fliesstexts daneben — Tally setzt darin selbst um. */
+.embed-wrap {
+  margin-top: var(--space-8);
+}
+
+.embed {
+  display: block;
+  width: 100%;
+  max-width: var(--measure-text);
+  /* Die Höhe steht als Attribut am iframe und wird von embed.js nachgeführt;
+     hier darf sie deshalb nicht überschrieben werden. */
+  border: 0;
 }
 
 /* --- Kontakt ------------------------------------------------------------- */
@@ -655,8 +665,7 @@ main:focus {
     border: 1px solid ButtonText;
   }
 
-  .carousel::scroll-button(*):disabled,
-  .button[aria-busy='true'] {
+  .carousel::scroll-button(*):disabled {
     border-color: GrayText;
   }
 

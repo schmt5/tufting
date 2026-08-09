@@ -74,10 +74,10 @@ describe('buildGraph', () => {
     assert.ok(!('remainingAttendeeCapacity' in unknown))
   })
 
-  it('führt das Angebot auf das öffentliche Tally-Formular', () => {
+  it('führt das Angebot auf die eigene Anmeldeseite', () => {
     const event = node(buildGraph([workshop({ id: 'VLa1Rj' })], ORIGIN), 'Event')
 
-    assert.equal((event.offers as Record<string, unknown>).url, 'https://tally.so/r/VLa1Rj')
+    assert.equal((event.offers as Record<string, unknown>).url, `${ORIGIN}/anmeldung/VLa1Rj`)
   })
 
   it('ist ohne Workshops immer noch ein gültiger Graph', () => {

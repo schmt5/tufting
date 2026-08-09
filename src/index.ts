@@ -1,8 +1,8 @@
 import { Hono } from 'hono'
 import { html } from 'hono/html'
 import { buildGraph, jsonLd, originOf } from './seo.ts'
-import { BUSINESS } from './site.ts'
-import { loadWorkshops } from './workshops.ts'
+import { BUSINESS, CONTACT_FORM_ID, CONTACT_PATH } from './site.ts'
+import { formatWorkshopDate, loadWorkshops } from './workshops.ts'
 import { renderAbout } from './views/about.ts'
 import { renderCard } from './views/card.ts'
 import { renderGallery } from './views/gallery.ts'
@@ -10,6 +10,12 @@ import { renderIntro } from './views/intro.ts'
 import { layout } from './views/layout.ts'
 import { renderImprint, renderNotFound, renderPrivacy } from './views/legal.ts'
 import { renderSchedule } from './views/schedule.ts'
+import {
+  renderContactPage,
+  renderSignup,
+  renderSignupUnavailable,
+  signupPath,
+} from './views/signup.ts'
 
 type Env = {
   TALLY_TOKEN: string
@@ -47,9 +53,77 @@ app.get('/', async (c) => {
         // Dieselben Workshops wie die Cards — das Markup beschreibt, was auch
         // sichtbar auf der Seite steht.
         head: jsonLd(buildGraph(workshops, origin)),
-        tally: true,
       },
       html`${renderGallery()} ${renderIntro(TITLE)} ${renderSchedule(cards, message)} ${renderAbout()}`,
+    ),
+  )
+})
+
+/**
+ * Anmeldung zu einem Termin. Eigene Seite statt Popup, weil das Formular länger
+ * ist als ein Overlay hoch — Begründung in views/signup.ts.
+ *
+ * Die ID wird gegen die geladenen Workshops geprüft, nicht bloss gegen ein
+ * Muster: sonst bettete die Seite jedes beliebige fremde Tally-Formular ein.
+ * `loadWorkshops` filtert vergangene Termine bereits weg, deren Adressen
+ * laufen damit auf die 404.
+ */
+app.get('/anmeldung/:id', async (c) => {
+  const { workshops, failed } = await loadWorkshops(c.env.TALLY_TOKEN)
+
+  // Ohne Daten aus Tally lässt sich die ID nicht prüfen. Eine 404 behauptete,
+  // es gäbe den Termin nicht — das weiss die Seite gerade nicht.
+  if (failed) {
+    return c.html(
+      layout(
+        {
+          title: `Anmeldung — ${BUSINESS.name}`,
+          description: 'Anmeldung zu einem Tufting-Workshop in Bern.',
+          canonical: `${originOf(c.req.url)}/`,
+          noindex: true,
+        },
+        renderSignupUnavailable(),
+      ),
+      503,
+    )
+  }
+
+  const workshop = workshops.find((entry) => entry.id === c.req.param('id'))
+
+  if (!workshop) return c.notFound()
+
+  const origin = originOf(c.req.url)
+  const date = formatWorkshopDate(workshop.date)
+
+  return c.html(
+    layout(
+      {
+        title: `Anmeldung Workshop ${date} — ${BUSINESS.name}`,
+        description: `Anmeldung zum Tufting-Workshop am ${date} in ${BUSINESS.locality}.`,
+        canonical: `${origin}${signupPath(workshop.id)}`,
+        tally: true,
+      },
+      renderSignup(workshop),
+    ),
+  )
+})
+
+/**
+ * Kontaktformular, derselbe Weg wie die Anmeldung. Ohne ID gibt es die Seite
+ * nicht — dann steht auch auf der Startseite kein Link dorthin.
+ */
+app.get(CONTACT_PATH, (c) => {
+  if (!CONTACT_FORM_ID) return c.notFound()
+
+  return c.html(
+    layout(
+      {
+        title: `Schreibe mir — ${BUSINESS.name}`,
+        description: `Kein passender Termin? Schreibe ${BUSINESS.person} für eine Alternative.`,
+        canonical: `${originOf(c.req.url)}${CONTACT_PATH}`,
+        tally: true,
+      },
+      renderContactPage(CONTACT_FORM_ID),
     ),
   )
 })
@@ -89,6 +163,13 @@ app.get('/robots.txt', async (c) =>
   c.text(`User-agent: *\nAllow: /\n\nSitemap: ${originOf(c.req.url)}/sitemap.xml\n`),
 )
 
+/**
+ * Nur die festen Seiten. Die Anmeldeseiten stehen bewusst nicht drin: sie
+ * hier aufzuzählen hiesse, bei jedem Abruf der Sitemap die Tally-API zu
+ * befragen — die bei 100 Anfragen pro Minute dichtmacht und pro Seitenaufbau
+ * schon eine Anfrage je Formular kostet. Gefunden werden sie über die Links
+ * auf der Startseite.
+ */
 const SITEMAP_PATHS = ['/', '/impressum', '/datenschutz']
 
 app.get('/sitemap.xml', async (c) => {

@@ -33,9 +33,8 @@ export interface LayoutOptions {
   /** Fehlerseiten gehören nicht in den Index. */
   noindex?: boolean
   /**
-   * Tally-Anbindung einbinden. Nur dort true, wo es auch einen Button gibt.
-   * Geladen wird dabei nur das eigene /tally.js; das Embed des Drittanbieters
-   * holt es erst beim Klick nach.
+   * Embed-Script einbinden. Nur auf den Formularseiten true — Startseite und
+   * Rechtstexte laden damit weder eigenes Script noch eines von Tally.
    */
   tally?: boolean
 }
@@ -92,6 +91,10 @@ function address(): Html {
  *
  * role="list" steht an jeder Liste ohne Punkte: Safari nimmt einer <ul> mit
  * list-style:none die Listensemantik, VoiceOver zählt die Einträge sonst nicht.
+ *
+ * /tally.js steht am Ende des Body, nicht im Head: es sucht die Embeds im
+ * Dokument, vorher gibt es sie noch nicht. embed.js von Tally holt es selbst
+ * nach.
  */
 export function layout(options: LayoutOptions, content: Html | string): Html {
   const origin = originOfCanonical(options.canonical)
