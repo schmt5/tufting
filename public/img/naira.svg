@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 450 600" width="450" height="600">
+  <rect x="0.5" y="0.5" width="449" height="599" fill="#ffffff" stroke="#e0e0e0" />
+  <path d="M0.5 0.5 L450  600 M450 0.5 L0.5 600" stroke="#e0e0e0" fill="none" />
+  <rect x="145" y="288" width="160" height="24" fill="#ffffff" />
+  <text x="225" y="305" text-anchor="middle" font-family="system-ui, sans-serif" font-size="13" font-weight="500" letter-spacing="1.2" fill="#767676">FOTO NAIRA</text>
+</svg>

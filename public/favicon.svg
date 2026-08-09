@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Naira Tufting">
+  <!-- Design Guide: rechte Winkel, kein Radius, nur Schwarz und Weiss.
+       Das N ist als Pfad gezeichnet und nicht gesetzt — eine Schrift, die im
+       Favicon nicht geladen ist, fiele sonst auf die Systemschrift zurück. -->
+  <rect width="64" height="64" fill="#000000" />
+  <path fill="#ffffff" d="M16 14h8.5l15 22.5V14H48v36h-8.5l-15-22.5V50H16z" />
+</svg>
