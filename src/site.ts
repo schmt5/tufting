@@ -34,7 +34,7 @@ export interface Business {
 
 export const BUSINESS: Business = {
   name: 'Naira Tufting',
-  person: 'Naira', // TODO: vollständiger Name fürs Impressum
+  person: 'Naira Ramos',
   // TODO: Hausnummer ergänzen. Ohne sie findet eine Kartensuche nur den Platz,
   // nicht das Studio — für den Rest der strukturierten Daten reicht es.
   street: 'Eigerplatz',
@@ -42,7 +42,7 @@ export const BUSINESS: Business = {
   locality: 'Bern',
   country: 'CH',
   email: 'tuftingstudio.bern@outlook.com',
-  profiles: [], // TODO: Instagram o.ä.
+  profiles: ['https://www.instagram.com/nairaramos/'],
 }
 
 /** Die Adresse taugt nur für strukturierte Daten, wenn sie vollständig ist. */

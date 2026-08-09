@@ -306,9 +306,10 @@ main:focus {
   }
 }
 
+/* Drei Bilder untereinander — eine Spalte auf allen Breiten. */
 .intro__media {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   align-content: start;
 }

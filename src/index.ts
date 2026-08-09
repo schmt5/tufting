@@ -85,13 +85,13 @@ app.get('/datenschutz', (c) =>
  * beide absolute URLs enthalten. So stimmen sie auf jeder Domain — auch bevor
  * die Custom Domain steht — statt eine hartcodierte Herkunft zu behaupten.
  */
-app.get('/robots.txt', (c) =>
+app.get('/robots.txt', async (c) =>
   c.text(`User-agent: *\nAllow: /\n\nSitemap: ${originOf(c.req.url)}/sitemap.xml\n`),
 )
 
 const SITEMAP_PATHS = ['/', '/impressum', '/datenschutz']
 
-app.get('/sitemap.xml', (c) => {
+app.get('/sitemap.xml', async (c) => {
   const origin = originOf(c.req.url)
   const urls = SITEMAP_PATHS.map((path) => `  <url><loc>${origin}${path}</loc></url>`).join('\n')
 

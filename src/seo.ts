@@ -68,6 +68,9 @@ function localBusiness(origin: string) {
     address: postalAddress(),
     areaServed: BUSINESS.locality,
     priceRange: `${WORKSHOP.currency} ${WORKSHOP.price}`,
+    // Ein Ein-Personen-Betrieb: die Person ist die Marke. Der Name verknüpft
+    // Studio und Profil aus `sameAs` zu einer Entität.
+    founder: { '@type': 'Person', name: BUSINESS.person },
     ...(BUSINESS.email ? { email: BUSINESS.email } : {}),
     ...(BUSINESS.profiles.length > 0 ? { sameAs: BUSINESS.profiles } : {}),
   }

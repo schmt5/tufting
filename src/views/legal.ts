@@ -31,6 +31,15 @@ function contactBlock(): Html {
     </p>`
 }
 
+/**
+ * Kein Abschnitt zu Rechtsform und Register: es gibt keinen
+ * Handelsregistereintrag, und ein Registerabschnitt ohne Eintrag behauptet
+ * das Gegenteil. Kommt einer dazu, gehören Firmenname, UID und Sitz zwischen
+ * Kontakt und Haftung.
+ *
+ * Der Hinweis steht hier und nicht als HTML-Kommentar im Markup — der würde
+ * mit ausgeliefert.
+ */
 export function renderImprint(): Html {
   return html`<section class="section">
       <div class="wrap prose prose--narrow">
@@ -38,11 +47,6 @@ export function renderImprint(): Html {
 
         <h2 class="section__title">Verantwortlich für den Inhalt</h2>
         ${contactBlock()}
-
-        <h2 class="section__title">Rechtsform und Register</h2>
-        <p>
-          ${todo('Rechtsform, falls im Handelsregister eingetragen: Firmenname, UID und Sitz')}
-        </p>
 
         <h2 class="section__title">Haftung</h2>
         <p>

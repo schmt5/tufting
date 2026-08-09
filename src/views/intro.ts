@@ -4,7 +4,7 @@ import type { Html } from './layout.ts'
 
 /**
  * Section "Tufting-Workshops in Bern": Titel, Einleitung, Fakten, Preise und
- * das 2×2-Bildraster. Der Text steht hier als Konstante — es gibt kein CMS
+ * die drei Bilder untereinander. Der Text steht hier als Konstante — es gibt kein CMS
  * (siehe plan.md §8), Änderungen sind ein Deploy.
  *
  * Preis und Gruppengrösse kommen aus site.ts, weil dieselben Zahlen im JSON-LD
@@ -34,9 +34,9 @@ const PRICES = [
 const DETAILS = ['Dauer: 6–7 Stunden', 'Ort: Bern Eigerplatz']
 
 /**
- * Bilder des Rasters. Sie zeigen dieselbe Sache wie der Text daneben und sind
- * damit dekorativ: alt="" statt viermal derselbe Satz, den ein Screenreader
- * sonst viermal vorliest.
+ * Bilder der Spalte. Sie zeigen dieselbe Sache wie der Text daneben und sind
+ * damit dekorativ: alt="" statt dreimal derselbe Satz, den ein Screenreader
+ * sonst dreimal vorliest.
  *
  * Echte Fotos ersetzen die Liste 1:1, Seitenverhältnis 4:3 — und bekommen dann
  * je einen eigenen, beschreibenden Alt-Text.
@@ -45,7 +45,6 @@ const IMAGES = [
   { src: '/img/workshop-1.svg', alt: '' },
   { src: '/img/workshop-2.svg', alt: '' },
   { src: '/img/workshop-3.svg', alt: '' },
-  { src: '/img/workshop-4.svg', alt: '' },
 ]
 
 export function renderIntro(title: string): Html {

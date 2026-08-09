@@ -175,8 +175,8 @@ direkt unter dem Header.
 
 ### Intro `.intro`
 
-Zweispaltig ab `48rem`: links Text, rechts das 2×2-Bildraster
-(`repeat(auto-fit, minmax(9rem, 1fr))`, also eine Spalte auf dem Telefon).
+Zweispaltig ab `48rem`: links Text, rechts drei Bilder untereinander
+(eine Spalte auf allen Breiten).
 Reihenfolge im Markup ist Text zuerst — auf dem Telefon liest man ihn zuerst.
 
 Textbausteine: `h1.page-title`, `p.lead` (Untertitel, `--text-lg` / 600 — ein
@@ -272,6 +272,10 @@ gliedert nicht. Inhalt: Anschrift, Rechtstexte, Jahr und Wortmarke.
 Die Anschrift steht in einem `<address>` mit `font-style: normal` — die Seite
 kennt keinen kursiven Schnitt. Sie ist nicht Dekoration: lokale Suche braucht
 Name, Adresse und Kontakt an einer sichtbaren Stelle, nicht nur im JSON-LD.
+
+Profile stehen als Textlink in der Form `instagram.com/name` — kein Icon, keine
+Fläche, keine zweite Schrift. Das folgt aus §8 („Icons ohne Textentsprechung"):
+ein Glyph ohne Wort wäre hier das einzige Bildzeichen der Seite.
 
 Das Jahr wird serverseitig in `Europe/Zurich` gerechnet, nicht ins Markup
 geschrieben.
@@ -452,7 +456,7 @@ Diese Liste existiert, damit „nur dieses eine Mal“ nicht passiert:
 | `public/fonts/inter-latin-var.woff2` | Inter Variable, Latin-Subset |
 | `public/fonts/inter-OFL.txt` | Lizenz, muss bei der Font-Datei bleiben |
 | `public/img/carousel-*.svg` | Platzhalter des Carousels (3:2) — durch echte Bilder ersetzen |
-| `public/img/workshop-*.svg` | Platzhalter des 2×2-Rasters (4:3) |
+| `public/img/workshop-*.svg` | Platzhalter der drei Intro-Bilder (4:3) |
 | `public/img/naira.svg` | Platzhalter des Porträts (3:4) |
 | `public/favicon.svg` | Wortmarke als „N", weiss auf schwarz — dazu `favicon.ico` und `apple-touch-icon.png` |
 | `public/og-image.png` | Link-Vorschau 1200×630, typografisch — durch ein echtes Bild ersetzen |

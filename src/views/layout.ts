@@ -51,10 +51,20 @@ function originOfCanonical(canonical: string): string {
   return new URL(canonical).origin
 }
 
+/** Zeigt vom Profil nur den Namen, nicht die halbe URL: instagram.com/nairaramos */
+function profileLabel(url: string): string {
+  const { hostname, pathname } = new URL(url)
+  return `${hostname.replace(/^www\./, '')}${pathname.replace(/\/$/, '')}`
+}
+
 /**
  * Anschrift im Footer. Vollständig, sobald die Adresse in site.ts steht —
  * lokale Suche braucht Name, Adresse und Kontakt an einer sichtbaren Stelle,
  * nicht nur im JSON-LD.
+ *
+ * Die Profile stehen auch als `sameAs` in den strukturierten Daten. Der
+ * sichtbare Link ist der Beleg dazu: Google prüft die Zuordnung, indem es dem
+ * Link folgt — eine Behauptung allein im JSON-LD wiegt weniger.
  */
 function address(): Html {
   const lines = [
@@ -65,6 +75,9 @@ function address(): Html {
   return html`<address class="site-footer__address">
       ${lines.map((line) => html`<span>${line}</span>`)}
       ${BUSINESS.email ? html`<a href="mailto:${BUSINESS.email}">${BUSINESS.email}</a>` : ''}
+      ${BUSINESS.profiles.map(
+        (url) => html`<a href="${url}" rel="me noopener">${profileLabel(url)}</a>`,
+      )}
     </address>`
 }
 

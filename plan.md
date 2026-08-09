@@ -213,12 +213,13 @@ Geschätzter Gesamtaufwand: **3.5–4.5h**.
 
 ### Weiterhin offen
 
-- **Stammdaten in `src/site.ts`**: Adresse (Eigerplatz, 3007 Bern) und E-Mail
-  stehen. Offen bleiben die **Hausnummer** — ohne sie findet eine Kartensuche
-  nur den Platz, nicht das Studio —, der **vollständige Name** fürs Impressum
-  und ein **Instagram-Profil** für `sameAs`. Was fehlt, ist `null` und wird
-  weggelassen statt geraten: eine erfundene Angabe in strukturierten Daten ist
-  schlechter als keine.
+- **Stammdaten in `src/site.ts`**: bis auf die **Hausnummer** vollständig. Ohne
+  sie findet eine Kartensuche nur den Platz, nicht das Studio. Was fehlt, ist
+  `null` und wird weggelassen statt geraten: eine erfundene Angabe in
+  strukturierten Daten ist schlechter als keine.
+- **Rechtsform**: Das Impressum hat noch einen sichtbaren Platzhalter für den
+  Handelsregister-Abschnitt. Ohne Eintrag kann der Abschnitt ganz weg — mit
+  Eintrag gehören Firmenname, UID und Sitz hinein.
 - **Uhrzeit der Workshops**: `Event.startDate` ist bisher nur datumsgenau, weil
   die Zeit nirgends in den Daten steht. Ein Hidden Field `time=10:00` wäre der
   Weg — `parseHiddenFields()` liest beliebige Keys bereits heute.
