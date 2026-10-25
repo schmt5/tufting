@@ -404,7 +404,9 @@ gibt es nur im Admin.
 │   ├── auth.ts              # Login, Session-Cookie, Sperre
 │   ├── db.ts                # alle SQL-Statements an einem Ort
 │   ├── workshops.ts         # Zustände, Datum, freie Plätze (rein, testbar)
-│   ├── signup.ts            # Validierung und Platz-Check der Anmeldung
+│   ├── env.ts               # Bindings und Secrets des Workers
+│   ├── forms.ts             # Formularwerte prüfen: Termin, Anmeldung
+│   ├── test-support.ts      # leere lokale D1 mit Migrationen für die Tests
 │   ├── turnstile.ts         # siteverify
 │   ├── push.ts              # VAPID, Verschlüsselung, Versand
 │   ├── ics.ts               # Kalenderdatei
@@ -415,6 +417,7 @@ gibt es nur im Admin.
 │   └── views/
 │       ├── layout.ts, gallery.ts, intro.ts, schedule.ts, card.ts,
 │       │   about.ts, legal.ts                   # öffentliche Seite
+│       ├── fields.ts        # Formularfelder mit Label und Fehlermeldung
 │       ├── signup.ts        # Anmeldeformular, Danke-Seite (statt Tally-Embed)
 │       └── admin/           # Layout, Login, Übersicht, Termin, Vorlage
 ├── public/
@@ -462,7 +465,15 @@ wrangler secret put TURNSTILE_SECRET_KEY
 wrangler secret put VAPID_PRIVATE_KEY
 ```
 
-`TALLY_TOKEN` wird nach der Umstellung gelöscht.
+`TALLY_TOKEN` wird nach der Umstellung gelöscht. Welche Werte lokal nötig sind,
+steht in `.dev.vars.example`.
+
+Lokal liegt die Datenbank unter `.wrangler/state`. Nach einem frischen Checkout
+oder einer neuen Migration einmal einspielen:
+
+```bash
+npx wrangler d1 migrations apply tufting --local
+```
 
 Vor jedem Deploy einmal `wrangler dev --remote`: die Edge ist strenger als das
 lokale workerd, lokal grün heisst nicht deploybar.
@@ -492,6 +503,13 @@ remote eingespielt.
 Überbuchungs-Test ist grün.
 
 ### Phase 2 — Login und Admin-Grundgerüst (3–4h)
+
+Stand: umgesetzt und lokal im Browser durchgeklickt (Desktop und Handy-Breite).
+Login mit Sperre, Session-Cookie, CSRF, Übersicht mit vergangenen Terminen,
+Termine anlegen und bearbeiten, Anmeldungen von Hand erfassen, als geschrieben
+markieren, stornieren, löschen. Tests in `auth.test.ts`, `forms.test.ts` und
+`admin.test.ts` (echte Requests gegen eine lokale D1). Noch nicht deployt, die
+Secrets in Produktion sind noch nicht gesetzt.
 
 - `auth.ts`: Login, Session, Sperre, Logout, `csrf()`
 - Admin-Layout, Übersicht, Termin anlegen/bearbeiten/absagen

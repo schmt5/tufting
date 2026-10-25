@@ -156,6 +156,38 @@ export async function listUpcomingWorkshops(
   return results
 }
 
+/** Admin-Übersicht: die letzten vergangenen Termine, neueste zuerst. */
+export async function listPastWorkshops(
+  db: D1Database,
+  today: string,
+  limit: number,
+): Promise<WorkshopWithSeats[]> {
+  const { results } = await db
+    .prepare(
+      `${WORKSHOP_WITH_SEATS} WHERE w.date < ?1 ORDER BY w.date DESC, w.start_time DESC LIMIT ?2`,
+    )
+    .bind(today, limit)
+    .all<WorkshopWithSeats>()
+
+  return results
+}
+
+/**
+ * Anmeldungen, denen Naira noch nicht geschrieben hat, pro Termin. Getrennt
+ * von WORKSHOP_WITH_SEATS, weil nur der Admin sie braucht.
+ */
+export async function countNewSignups(db: D1Database): Promise<Map<string, number>> {
+  const { results } = await db
+    .prepare(
+      `SELECT workshop_id, COUNT(*) AS count FROM signups
+       WHERE contacted_at IS NULL AND cancelled_at IS NULL
+       GROUP BY workshop_id`,
+    )
+    .all<{ workshop_id: string; count: number }>()
+
+  return new Map(results.map((row) => [row.workshop_id, row.count]))
+}
+
 /** Admin: ein Termin in jedem Zustand, auch vergangen. */
 export async function getWorkshop(db: D1Database, id: string): Promise<WorkshopWithSeats | null> {
   return db.prepare(`${WORKSHOP_WITH_SEATS} WHERE w.id = ?1`).bind(id).first<WorkshopWithSeats>()
@@ -327,4 +359,27 @@ export async function cancelSignup(
 export async function deleteSignup(db: D1Database, id: string): Promise<boolean> {
   const result = await db.prepare('DELETE FROM signups WHERE id = ?1').bind(id).run()
   return result.meta.changes === 1
+}
+
+/** Fehlversuche einer IP seit `since` (Unix-Sekunden), für die Login-Sperre. */
+export async function countLoginFailures(db: D1Database, ip: string, since: number): Promise<number> {
+  const row = await db
+    .prepare('SELECT COUNT(*) AS count FROM login_failures WHERE ip = ?1 AND at > ?2')
+    .bind(ip, since)
+    .first<{ count: number }>()
+
+  return row?.count ?? 0
+}
+
+export async function recordLoginFailure(
+  db: D1Database,
+  ip: string,
+  now: number = nowSeconds(),
+): Promise<void> {
+  await db.prepare('INSERT INTO login_failures (ip, at) VALUES (?1, ?2)').bind(ip, now).run()
+}
+
+/** Nach einem erfolgreichen Login zählt die Vorgeschichte dieser IP nicht mehr. */
+export async function clearLoginFailures(db: D1Database, ip: string): Promise<void> {
+  await db.prepare('DELETE FROM login_failures WHERE ip = ?1').bind(ip).run()
 }

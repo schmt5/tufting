@@ -1,0 +1,11 @@
+# Vorlage für .dev.vars (lokale Secrets für `wrangler dev`, nicht im Repo).
+# Kopieren nach .dev.vars und Werte setzen. In Produktion: `wrangler secret put <NAME>`.
+
+# Token der Tally-API — nur bis zur Umstellung auf die eigene Anmeldung.
+TALLY_TOKEN=
+
+# Passwort für /admin. Lokal irgendein Wert, in Produktion ein langes.
+ADMIN_PASSWORD=
+
+# Schlüssel für das Session-Cookie, mindestens 32 Zeichen, z.B. `openssl rand -hex 32`.
+SESSION_SECRET=

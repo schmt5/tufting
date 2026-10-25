@@ -1,5 +1,7 @@
 import { Hono } from 'hono'
 import { html } from 'hono/html'
+import admin from './admin.ts'
+import type { Env } from './env.ts'
 import { buildGraph, jsonLd, originOf } from './seo.ts'
 import { BUSINESS, CONTACT_FORM_ID, CONTACT_PATH } from './site.ts'
 import { formatWorkshopDate, loadWorkshops } from './workshops.ts'
@@ -17,9 +19,6 @@ import {
   signupPath,
 } from './views/signup.ts'
 
-type Env = {
-  TALLY_TOKEN: string
-}
 
 const TITLE = 'Tufting-Workshops in Bern'
 const PAGE_TITLE = `Tufting-Workshops in Bern — ${BUSINESS.name}`
@@ -27,6 +26,9 @@ const DESCRIPTION =
   'Tufting-Workshops in Bern: Tufte deinen eigenen Teppich in kleiner Runde. Termine und Anmeldung.'
 
 const app = new Hono<{ Bindings: Env }>()
+
+// Admin mit eigenen Middlewares (Login, CSRF, no-store), siehe admin.ts.
+app.route('/admin', admin)
 
 app.get('/', async (c) => {
   const origin = originOf(c.req.url)
