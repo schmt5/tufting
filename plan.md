@@ -580,15 +580,28 @@ der Kalender-Link legt den Termin auf iPhone und in Google Calendar richtig an.
 
 ### Phase 6 — Umstellung und Aufräumen (1–2h)
 
-- Turnstile-Widget für die Zieldomain anlegen, Sitekey, Hostnamen und Secret
+Stand: der Teil ohne Domain ist umgesetzt — Cron, Kontakt-Link,
+Datenschutzerklärung, Design Guide. Die Datenschutzerklärung beschreibt je nach
+`SIGNUP_BACKEND` die Tally-Anmeldung oder die eigene (Datenbank in der EU,
+Mitteilung an Naira, Turnstile), damit sie vor und nach dem Umschalten stimmt.
+Der Cron läuft erst nach dem Deploy; getestet ist er in `cleanup.test.ts`.
+
+Erledigt:
+
+- [x] Kontaktblock als `mailto:`-Link mit Betreff, `/kontakt` und
+  `CONTACT_FORM_ID` entfernt (das Tally-Kontaktformular war nie aktiv)
+- [x] Datenschutzerklärung nach §9, `DESIGN_GUIDE.md` nachgeführt
+- [x] Cron täglich 03:00 UTC: Anmeldungen 3 Monate nach dem Workshop,
+  `login_failures` nach einem Tag (`cleanup.ts`)
+
+Offen, sobald die Domain steht:
+
+- [ ] Turnstile-Widget für die Zieldomain anlegen, Sitekey, Hostnamen und Secret
   setzen (ohne sie bleibt die Anmeldung mit `d1` zu, statt ungeschützt)
-- Termine im Admin erfassen, `SIGNUP_BACKEND` auf `d1` stellen
-- Tally-Code, `tally.js`, `TALLY_TOKEN` und danach die Var selbst entfernen
-- Kontaktblock auf `mailto:`-Link umstellen, `/kontakt` und `CONTACT_FORM_ID`
-  entfernen
-- Datenschutzerklärung nach §9, `DESIGN_GUIDE.md` nachführen
-- Cron: Anmeldungen 3 Monate nach dem Workshop und `login_failures` nach einem
-  Tag löschen
+- [ ] Deploy, dann Push, Teilen und Kalender-Import auf Nairas iPhone prüfen
+- [ ] Termine im Admin erfassen, `SIGNUP_BACKEND` auf `d1` stellen
+- [ ] Tally-Code, `tally.js`, `TALLY_TOKEN`, die Tally-Variante der
+  Datenschutzerklärung und danach die Var selbst entfernen
 
 **Fertig wenn**: Kein Request geht mehr an Tally, und die Rechtstexte
 beschreiben, was die Seite tatsächlich tut.

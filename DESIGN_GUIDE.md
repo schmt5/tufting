@@ -13,6 +13,10 @@ Die Seite hat eine Aufgabe: zeigen, was der Workshop ist und wann er
 stattfindet, und die Anmeldung öffnen. Jedes Element, das dieser Aufgabe nicht
 dient, kommt weg.
 
+Der Admin unter `/admin` (§6, „Admin“) folgt denselben Regeln. Er ist ein
+Werkzeug für eine Person auf dem Handy und bekommt nur dort Ausnahmen, wo §6
+sie ausdrücklich nennt.
+
 Der Entwurf, aus dem die Inhalte stammen, arbeitet mit rosa Flächen,
 Handschrift und gerundeten Ecken. Das ist bewusst nicht übernommen: aus dem
 Entwurf kommen Struktur und Text, die Form kommt von hier.
@@ -198,6 +202,8 @@ Ebene: aktuell nur „Kosten".
 ┌──────────────────────────┐  ← border: 1px solid var(--ink), padding --space-6
 │ WORKSHOP AM              │    Vorzeile, --text-xs / --ink-muted
 │ 22.08.2026               │    h3, --text-lg / 600 — das Datum IST der Titel
+│ 10:00–17:00              │    .card__meta, --ink-muted, nur aus der D1
+│ Mit Apéro zum Abschluss  │    .card__meta, Hinweis aus dem Admin, optional
 │ NUR NOCH 2 PLÄTZE FREI   │    Status-Label, optional
 │ ┌────────────┐           │
 │ │  Anmelden  │           │    Link auf /anmeldung/…, optional
@@ -212,8 +218,10 @@ Sorte gibt es nicht — bleibt aber in `--ink-muted`, damit das Datum die Zeile
 ist, die man zuerst liest.
 
 **Der Titel der Card ist das Datum.** Die Workshops haben keinen eigenen Namen;
-der Formularname aus Tally ist ein interner Bezeichner und erscheint nirgends.
-Das Datum steht als `<time datetime="YYYY-MM-DD">` im `h2` — sichtbar
+der Formularname aus Tally ist ein interner Bezeichner und erscheint nirgends,
+Termine aus dem Admin haben gar keinen. Uhrzeit und Hinweis stehen darunter in
+`--ink-muted`, nur wenn es sie gibt (aus Tally gibt es sie nicht).
+Das Datum steht als `<time datetime="YYYY-MM-DD">` im `h3` — sichtbar
 `DD.MM.YYYY`, maschinenlesbar ISO. Aus demselben Grund benennt das `aria-label`
 des Buttons das Datum und nicht den Formularnamen: ein Screenreader soll nichts
 vorlesen, was auf dem Bildschirm nicht steht.
@@ -249,9 +257,14 @@ Platz ist eine Information.
 Die einzige Fläche der Seite: `--ink` gefüllt, Text `--paper`, Gewicht 500,
 keine Rundung, `1px`-Rahmen in `--ink`.
 
-- Eine Klasse für alle Buttons — den Anmelde-Button der Card und den Button, der
-  das Kontaktformular öffnet. `.card__cta` trägt nur noch das `margin-top: auto`,
+- Eine Klasse für alle Buttons — den Anmelde-Button der Card, „Schreibe mir“
+  und die Buttons im Admin. `.card__cta` trägt nur noch das `margin-top: auto`,
   das die Buttons einer Grid-Zeile auf eine Höhe bringt.
+- `.button--secondary`: Rahmen statt Fläche, für die zweitrangige Aktion neben
+  einer Hauptaktion (im Admin: Kopieren, Stornieren, Bearbeiten). Hover füllt
+  sie schwarz — die Umkehrung des Hauptbuttons.
+- `.button--small`: Kleinschrift und weniger Innenabstand, für Reihen von
+  Aktionen auf einer Anmeldung. Die Mindesthöhe von 44px bleibt.
 - Hover invertiert (weisse Fläche, schwarzer Text) — der Rahmen liegt schon
   vorher da, deshalb springt beim Wechsel nichts.
 - Hover-Regeln nur in `@media (hover: hover)`, sonst bleibt der Zustand auf
@@ -259,34 +272,94 @@ keine Rundung, `1px`-Rahmen in `--ink`.
 - Mindesthöhe `2.75rem` (44px) als Zielgrösse für den Finger.
 - Übergang `120ms ease` auf Farbe.
 
-`.button` gilt für `<a>` und `<button>` gleichermassen. Die Formular-Buttons
-sind Links, der Rest der Seite hat keine.
+`.button` gilt für `<a>` und `<button>` gleichermassen. Was auf eine andere
+Seite führt, ist ein Link; was etwas absendet oder ändert, ein `<button>` in
+einem eigenen `<form method="post">`.
 
 ### Kontakt `.contact-block`
 
 Der Weg für Leute, denen kein Termin passt: ein Satz, darunter der Button
 „Schreibe mir".
 
-Der Button ist derselbe wie auf den Cards und führt auf `/kontakt` — dieselbe
-Formularseite wie die Anmeldung. Die Formular-ID steht fest in `site.ts`
-(`CONTACT_FORM_ID`); im Gegensatz zu den Workshops wird sie nicht über die API
-gesucht.
+Der Button ist derselbe wie auf den Cards und ein `mailto:`-Link auf Nairas
+Adresse aus `site.ts`, mit dem Betreff „Anfrage Tufting-Workshop“. Kein
+Formular: Naira antwortet sowieso per Mail. Ohne Adresse gibt es keinen Link —
+einer ins Leere wäre schlimmer als keiner.
 
-Solange die ID fehlt, gibt es die Seite nicht und statt des Links steht der
-Hinweis `.contact__pending`. Ein Link ins Leere wäre schlimmer als keiner.
+### Anmeldeseite
 
-### Formularseite `.embed-wrap`
-
-Eigene Seite pro Formular (`/anmeldung/{id}`, `/kontakt`) statt Popup: die
-Formulare sind länger, als ein Overlay hoch ist. Im Overlay scrollt man in einem
-Kasten im Kasten und sieht nie das Ganze. Auf einer eigenen Seite wächst das
-iframe per `dynamicHeight` auf seine volle Höhe, und gescrollt wird die Seite.
+Eigene Seite pro Termin (`/anmeldung/{id}`) statt Popup: das Formular ist
+länger, als ein Overlay hoch ist. Im Overlay scrollt man in einem Kasten im
+Kasten und sieht nie das Ganze.
 
 Aufbau: `.back`-Link zurück zu den Terminen (`--text-xs`, Pfeil aus dem CSS —
 ein Screenreader liest „Alle Termine", nicht „Pfeil links"), `h1` „Anmeldung",
-darunter das Datum als `.lead`, dann das Formular. Das iframe ist auf
-`--measure-text` gedeckelt und rahmenlos; seine Höhe kommt vom Embed und wird
-im CSS nicht angefasst.
+darunter Datum und Uhrzeit als `.lead`, dann das Formular.
+
+Zwei Varianten, je nach `SIGNUP_BACKEND`:
+
+- **Tally** (`.embed-wrap`): das iframe ist auf `--measure-text` gedeckelt und
+  rahmenlos; seine Höhe kommt vom Embed (`dynamicHeight`) und wird im CSS nicht
+  angefasst.
+- **Eigenes Formular** (`.form`, siehe unten): Vorname/Nachname nebeneinander,
+  E-Mail, Anzahl Personen als Auswahl bis zu den freien Plätzen, Bemerkung,
+  das Turnstile-Widget, der Button „Verbindlich anmelden“ und darunter ein Satz
+  mit Link auf die Datenschutzerklärung. Danach die Danke-Seite mit Datum und
+  Uhrzeit — ohne Personendaten.
+
+### Formular `.form` / `.field`
+
+Ein Feld ist Label, optional Hinweis und Fehlermeldung, dann das Eingabefeld —
+in dieser Reihenfolge, damit die Meldung vor dem Feld gelesen wird.
+
+- `.field__label`: Gewicht 500. Jedes Feld hat ein sichtbares Label; ein
+  Platzhaltertext ersetzt es nie.
+- `.field__hint`: `--text-xs`, `--ink-muted`. Immer sichtbar, per
+  `aria-describedby` am Feld.
+- `.field__error`: Gewicht 600 und ein vorangestelltes „!“ aus dem CSS. **Kein
+  Rot** — Regel 2. Das Feld daneben bekommt einen `2px`-Umriss nach innen und
+  `aria-invalid="true"`. Die Meldung ist beim Laden schon da, deshalb ohne
+  Live-Region.
+- `.field__control`: `1px`-Rahmen in `--ink`, keine Rundung, Mindesthöhe 44px.
+- `.form__row`: zwei kurze Felder nebeneinander ab `30rem`, darunter
+  untereinander. `align-items: end`, damit die Eingabefelder auf einer Linie
+  bleiben, auch wenn nur eines eine Meldung trägt.
+- `.choice`: Radio oder Checkbox mit Label in einer Zeile, die ganze Zeile ist
+  die Trefferfläche. `accent-color: --ink`.
+
+Nach dem Absenden kommt bei Fehlern dasselbe Formular mit den Eingaben zurück;
+nach Erfolg ein Redirect (Post/Redirect/Get).
+
+### Admin
+
+Derselbe Seitenkopf mit eigener Navigation (Termine, Neuer Termin, Vorlage,
+Mitteilungen, Abmelden), dasselbe Stylesheet, kein Footer. Inhalt in
+`.admin__main` mit `--space-6` zwischen den Blöcken.
+
+- **Rückmeldung `.flash`**: ein Satz in einem `1px`-Rahmen nach einer Aktion
+  („Termin gespeichert.“). Beim Laden schon da, ohne Live-Region.
+- **Liste `.admin-list` / `.admin-row`**: Termine als Zeilen mit Haarlinie
+  `--rule` dazwischen. Datum fett, dahinter Zeit und Belegung in `--ink-muted`,
+  rechts die Zustände. **Ausnahme von §8:** die ganze Zeile ist klickbar — über
+  einen einzigen Link auf dem Datum, dessen Fläche ein `::after` über die Zeile
+  zieht. Auf dem Handy wäre das Datum allein ein zu kleines Ziel; ein
+  Screenreader liest trotzdem einen Link pro Termin.
+- **Zustand `.tag`**: Kleinschrift im Rahmen `--ink-muted` („Entwurf“,
+  „Storniert …“). `.tag--strong` ist gefüllt und steht nur für „Neu“ — das,
+  worauf Naira reagieren muss. Das Wort trägt die Bedeutung, die Fläche
+  verstärkt sie nur.
+- **Anmeldung `.signup`**: ein Kasten wie die Card. Name als `h3`, Zustand
+  rechts, darunter Personen, E-Mail und Zeitpunkt in `--ink-muted`, dann die
+  Aktionen in `.actions`. Nach einer Aktion springt die Seite per Anker auf die
+  Anmeldung, `:target` bekommt einen `2px`-Umriss.
+- **Löschen `.confirm`**: ein `<details>`, dessen `<summary>` wie ein kleiner
+  Button aussieht; der eigentliche „Endgültig löschen“-Button steht darin.
+  Ein Schritt mehr ohne JavaScript, anders als `confirm()`.
+- **Vorlage**: `.placeholders` listet die Platzhalter, `.mail-preview` zeigt
+  die ausgefüllte Mail in einem Rahmen `--rule`, Zeilenumbrüche wie in der
+  Mail (`white-space: pre-line`).
+- **Als App**: Manifest „Naira Admin“, Icons aus der Wortmarke (bis ein Logo
+  kommt), `theme-color` weiss.
 
 ### Über mich `.about`
 
@@ -426,11 +499,17 @@ Zwei Punkte, die man dabei kennen muss:
 - **`prefers-reduced-motion: reduce`**: alle Übergänge aus, Seite und Galerie
   springen dann wieder hart. Ohne das ist weiches Scrollen ein Auslöser für
   vestibuläre Beschwerden.
-- **Screenreader**: der Anmelde-Button trägt ein `aria-label` mit dem
-  Workshop-Namen, weil „Anmelden“ ausserhalb der Card nicht unterscheidbar ist.
-- **Kein Client-JS für Inhalt.** Das Tally-Embed-Script ist die einzige
-  Ausnahme und betrifft nur das Popup. Ohne JavaScript bleibt die Seite
-  vollständig lesbar, inklusive Galerie; nur die Anmeldung braucht es.
+- **Screenreader**: der Anmelde-Button trägt ein `aria-label` mit dem Datum,
+  weil „Anmelden“ ausserhalb der Card nicht unterscheidbar ist.
+- **Kein Client-JS für Inhalt.** Ohne JavaScript bleibt die Seite vollständig
+  lesbar, inklusive Galerie. Script gibt es nur dort, wo die Plattform es
+  verlangt: das Tally-Embed (Variante Tally), das Turnstile-Widget auf der
+  eigenen Anmeldeseite und im Admin `admin.js` für Service Worker, Push,
+  Kopieren und Teilen. Was ein Script erst freischaltet, steht mit `hidden` im
+  HTML und wird nur gezeigt, wo es auch geht.
+- **`[hidden]` gewinnt immer** (`display: none !important` in der Basis). Sonst
+  zeigt eine Klasse mit `display`, wie `.button`, ein Element, das versteckt
+  sein soll.
 - **Zoom**: bis 200% ohne horizontales Scrollen. Alle Grössen in `rem`, keine
   festen Höhen an Textcontainern.
 - **Überschriftenränge folgen der Verschachtelung, nicht der Optik.** Der
@@ -469,11 +548,11 @@ Diese Liste existiert, damit „nur dieses eine Mal“ nicht passiert:
 - Farbe als Bedeutungsträger
 - Animationen ausser dem Farbübergang an Buttons und Punkten und dem
   weichen Scrollen von Seite und Galerie
-- JavaScript für Layout oder Interaktion — Ausnahme bleibt allein das
-  Tally-Embed auf den Formularseiten (`public/tally.js`), das Carousel kommt
-  ohne aus
+- JavaScript für Layout oder Interaktion — Ausnahmen sind nur die in §7
+  genannten (Tally-Embed, Turnstile, `admin.js`); das Carousel kommt ohne aus
 - Icons ohne Textentsprechung
-- klickbare Cards, Hover-Effekte auf ganzen Blöcken
+- klickbare Cards, Hover-Effekte auf ganzen Blöcken — einzige Ausnahme sind
+  die Terminzeilen im Admin (§6)
 - Autoplay in der Galerie
 - Grauwerte unter 4.5:1, wenn es Text ist
 - Inline-`style`-Attribute im Markup
@@ -485,7 +564,10 @@ Diese Liste existiert, damit „nur dieses eine Mal“ nicht passiert:
 |---|---|
 | `DESIGN_GUIDE.md` | dieses Dokument — die Entscheidungen |
 | `public/style.css` | Tokens und Regeln, gliedert sich nach §2–6 |
-| `public/tally.js` | Startet die Embeds der Formularseiten (Höhe per iframe-resizer) |
+| `public/tally.js` | Startet die Embeds der Formularseiten (Höhe per iframe-resizer), nur Variante Tally |
+| `public/admin/admin.js` | Admin: Service Worker registrieren, Push aktivieren, Kopieren, Teilen |
+| `public/admin-sw.js` | Service Worker des Admins: Mitteilungen anzeigen und öffnen |
+| `public/admin/manifest.webmanifest` | Admin als App, mit `icon-180/192/512.png` aus der Wortmarke |
 | `public/fonts/inter-latin-var.woff2` | Inter Variable, Latin-Subset |
 | `public/fonts/inter-OFL.txt` | Lizenz, muss bei der Font-Datei bleiben |
 | `public/img/carousel-*.svg` | Platzhalter des Carousels (3:2) — durch echte Bilder ersetzen |
@@ -496,15 +578,17 @@ Diese Liste existiert, damit „nur dieses eine Mal“ nicht passiert:
 | `src/views/layout.ts` | Skeleton, Head, Meta-Schicht, Seitenkopf, Footer |
 | `src/views/gallery.ts` | Bildliste und Carousel-Markup |
 | `src/views/intro.ts` | Section „Tufting-Workshops in Bern": Text, Fakten, Preise, Bilder |
-| `src/views/schedule.ts` | Section „Wähle deinen Workshoptag": Grid und Kontakt |
+| `src/views/schedule.ts` | Section „Wähle deinen Workshoptag": Grid und Kontakt-Link |
 | `src/views/card.ts` | Card-Markup und Zustandslogik |
-| `src/views/signup.ts` | Formularseiten: Anmeldung je Termin und Kontakt |
+| `src/views/signup.ts` | Anmeldeseite (Tally-Embed oder eigenes Formular), Danke-Seite |
+| `src/views/fields.ts` | Formularfelder mit Label, Hinweis und Fehlermeldung |
+| `src/views/admin/` | Admin: Layout, Login, Übersicht, Termin, Vorlage, Mitteilungen |
 | `src/views/about.ts` | Section „Ich bin Naira" |
 | `src/views/legal.ts` | Impressum, Datenschutz, 404 — `.prose--narrow` |
 
 Die Texte der Seite stehen als Konstanten in den View-Modulen. Es gibt kein CMS
-(plan.md §8), eine Textänderung ist ein Deploy. Ausnahme sind die Termine: die
-kommen zur Request-Zeit aus Tally.
+(plan.md §14), eine Textänderung ist ein Deploy. Ausnahme sind die Termine:
+die kommen zur Request-Zeit aus Tally oder aus der D1, gepflegt im Admin.
 
 Klassen sind BEM-artig benannt (`.card__title`, `.site-header__logo`). Ausgelesen
 wird der Zustand über `data-state` auf der Card, nicht über eine Zustandsklasse
