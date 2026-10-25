@@ -72,18 +72,52 @@ function location(): string {
 
 export type IcsWorkshop = Pick<WorkshopRow, 'id' | 'date' | 'start_time' | 'end_time' | 'note' | 'status' | 'updated_at'>
 
+/** Eine Person in ORGANIZER oder ATTENDEE. */
+export interface IcsPerson {
+  name: string
+  email: string
+}
+
+/**
+ * Für eine Einladung an eine angemeldete Person: Veranstalterin und Gast.
+ * Ohne Einladung ist die Datei ein reiner Termin zum Importieren (PUBLISH).
+ */
+export interface IcsInvite {
+  organizer: IcsPerson
+  attendee: IcsPerson
+}
+
+/**
+ * Parameterwert in Anführungszeichen (RFC 5545 §3.2). Darin darf kein `"`
+ * stehen, und Zeilenumbrüche haben in einem Namen nichts verloren.
+ */
+function quoteParam(value: string): string {
+  return `"${value.replace(/["\r\n]/g, '')}"`
+}
+
+function person(property: 'ORGANIZER' | 'ATTENDEE', who: IcsPerson, extra = ''): string {
+  return `${property};CN=${quoteParam(who.name)}${extra}:mailto:${who.email}`
+}
+
 /**
  * Ein VEVENT pro Datei.
  *
  * Die UID bleibt pro Workshop gleich: importiert jemand die Datei nach einer
  * Änderung nochmals, aktualisiert der Kalender den Termin, statt ihn zu
- * verdoppeln. SEQUENCE und LAST-MODIFIED folgen `updated_at`, damit der
- * Kalender die neuere Fassung erkennt. Ein abgesagter Workshop wird als
- * CANCELLED ausgeliefert — so verschwindet er auch aus Kalendern, die ihn
- * schon haben.
+ * verdoppeln — auch zwischen öffentlicher Datei und Einladung. SEQUENCE und
+ * LAST-MODIFIED folgen `updated_at`, damit der Kalender die neuere Fassung
+ * erkennt. Ein abgesagter Workshop wird als CANCELLED ausgeliefert — so
+ * verschwindet er auch aus Kalendern, die ihn schon haben.
+ *
+ * Mit `invite` wird daraus eine Einladung (RFC 5546): METHOD:REQUEST mit
+ * Naira als ORGANIZER und der angemeldeten Person als ATTENDEE. Erst dann
+ * zeigen Gmail und Outlook den Termin als Karte mit „Ja / Vielleicht / Nein“;
+ * die Antwort geht als Mail an die Veranstalterin. Für einen abgesagten
+ * Workshop wird die Einladung zur Absage (METHOD:CANCEL).
  */
-export function buildIcs(workshop: IcsWorkshop, origin: string, signupUrl: string): string {
+export function buildIcs(workshop: IcsWorkshop, origin: string, signupUrl: string, invite?: IcsInvite): string {
   const host = new URL(origin).hostname
+  const cancelled = workshop.status === 'cancelled'
   const description = [
     `Tufting-Workshop bei ${BUSINESS.name} in ${BUSINESS.locality}.`,
     workshop.note,
@@ -92,12 +126,14 @@ export function buildIcs(workshop: IcsWorkshop, origin: string, signupUrl: strin
     .filter(Boolean)
     .join('\n')
 
+  const method = invite ? (cancelled ? 'CANCEL' : 'REQUEST') : 'PUBLISH'
+
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
     `PRODID:-//${BUSINESS.name}//Workshops//DE`,
     'CALSCALE:GREGORIAN',
-    'METHOD:PUBLISH',
+    `METHOD:${method}`,
     'BEGIN:VEVENT',
     `UID:workshop-${workshop.id}@${host}`,
     `DTSTAMP:${icsTimestamp(workshop.updated_at)}`,
@@ -109,7 +145,13 @@ export function buildIcs(workshop: IcsWorkshop, origin: string, signupUrl: strin
     `LOCATION:${escapeText(location())}`,
     `DESCRIPTION:${escapeText(description)}`,
     `URL:${signupUrl}`,
-    `STATUS:${workshop.status === 'cancelled' ? 'CANCELLED' : 'CONFIRMED'}`,
+    ...(invite
+      ? [
+          person('ORGANIZER', invite.organizer),
+          person('ATTENDEE', invite.attendee, ';CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE'),
+        ]
+      : []),
+    `STATUS:${cancelled ? 'CANCELLED' : 'CONFIRMED'}`,
     'END:VEVENT',
     'END:VCALENDAR',
   ]
@@ -121,4 +163,9 @@ export function buildIcs(workshop: IcsWorkshop, origin: string, signupUrl: strin
 /** `workshop-2026-11-28.ics` — ein Name, unter dem die Datei auf dem Gerät Sinn ergibt. */
 export function icsFilename(date: string): string {
   return `workshop-${date}.ics`
+}
+
+/** `einladung-2026-11-28.ics` — der Anhang in Nairas Mail. */
+export function inviteFilename(date: string): string {
+  return `einladung-${date}.ics`
 }

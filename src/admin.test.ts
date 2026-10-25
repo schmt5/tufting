@@ -469,6 +469,36 @@ describe('E-Mail-Vorlage', () => {
     assert.equal(link.searchParams.get('body'), `Hoi Mia\r\nhttp://localhost/termin/${id}.ics`)
 
     assert.match(text, /data-copy="Workshop am 10\.01\.2099/)
-    assert.match(text, new RegExp(`data-share-ics="http://localhost/termin/${id}\\.ics"`))
+    assert.match(text, /data-invite="\/admin\/anmeldungen\/[a-z2-9]{16}\/einladung\.ics"/)
+    assert.match(text, /data-mail-to="mia@example\.com"/)
+    assert.match(text, /data-mail-subject="Workshop am 10\.01\.2099"/)
+  })
+
+  it('liefert pro Anmeldung eine Einladung mit der Person als Gast', async () => {
+    const cookie = await login()
+    const id = await createWorkshop(env.DB, workshopInput(4))
+    await request('/admin/anmeldungen', { form: signupForm(id, { first_name: 'Mia', last_name: 'Beispiel', email: 'mia@example.com' }), cookie })
+    const [signup] = await listSignups(env.DB, id)
+
+    const res = await request(`/admin/anmeldungen/${signup?.id}/einladung.ics`, { cookie })
+    const text = (await res.text()).replaceAll('\r\n ', '')
+
+    assert.equal(res.status, 200)
+    assert.equal(res.headers.get('content-type'), 'text/calendar; charset=utf-8; method=REQUEST')
+    assert.match(res.headers.get('content-disposition') ?? '', /attachment; filename="einladung-2099-01-10\.ics"/)
+    assert.match(text, /METHOD:REQUEST/)
+    assert.match(text, /ORGANIZER;CN="Naira Ramos":mailto:tuftingstudio\.bern@outlook\.com/)
+    assert.match(text, /ATTENDEE;CN="Mia Beispiel";[^:]*RSVP=TRUE:mailto:mia@example\.com/)
+  })
+
+  it('gibt die Einladung nur mit Login heraus', async () => {
+    const cookie = await login()
+    const id = await createWorkshop(env.DB, workshopInput(4))
+    await request('/admin/anmeldungen', { form: signupForm(id), cookie })
+    const [signup] = await listSignups(env.DB, id)
+
+    const res = await request(`/admin/anmeldungen/${signup?.id}/einladung.ics`)
+    assert.equal(res.status, 303)
+    assert.equal((await request('/admin/anmeldungen/gibtsnicht/einladung.ics', { cookie })).status, 404)
   })
 })

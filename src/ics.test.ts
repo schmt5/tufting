@@ -100,3 +100,49 @@ describe('icsUtc', () => {
     assert.equal(icsUtc('2026-11-28T10:00:00+01:00'), '20261128T090000Z')
   })
 })
+
+describe('buildIcs als Einladung', () => {
+  const invite = {
+    organizer: { name: 'Naira Ramos', email: 'tuftingstudio.bern@outlook.com' },
+    attendee: { name: 'Mia "Mimi" Beispiel', email: 'mia@example.com' },
+  }
+
+  it('ist eine Einladung mit Veranstalterin und Gast, der antworten soll', () => {
+    const lines = unfolded(buildIcs(workshop(), ORIGIN, URL, invite))
+
+    assert.ok(lines.includes('METHOD:REQUEST'))
+    assert.ok(lines.includes('ORGANIZER;CN="Naira Ramos":mailto:tuftingstudio.bern@outlook.com'))
+    assert.ok(
+      lines.includes(
+        'ATTENDEE;CN="Mia Mimi Beispiel";CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:mia@example.com',
+      ),
+    )
+  })
+
+  it('behält die UID der öffentlichen Datei', () => {
+    const uid = (ics: string) => unfolded(ics).find((line) => line.startsWith('UID:'))
+    assert.equal(uid(buildIcs(workshop(), ORIGIN, URL, invite)), uid(buildIcs(workshop(), ORIGIN, URL)))
+  })
+
+  it('wird bei einem abgesagten Workshop zur Absage', () => {
+    const lines = unfolded(buildIcs(workshop({ status: 'cancelled' }), ORIGIN, URL, invite))
+
+    assert.ok(lines.includes('METHOD:CANCEL'))
+    assert.ok(lines.includes('STATUS:CANCELLED'))
+  })
+
+  it('bleibt ohne Einladung eine Datei zum Importieren', () => {
+    const lines = unfolded(buildIcs(workshop(), ORIGIN, URL))
+
+    assert.ok(lines.includes('METHOD:PUBLISH'))
+    assert.ok(!lines.some((line) => line.startsWith('ATTENDEE')))
+  })
+
+  it('faltet auch lange Teilnehmerzeilen unter 75 Byte', () => {
+    const long = { ...invite, attendee: { name: 'Ä'.repeat(40), email: 'sehr.lange.adresse.fuer.den.test@example.com' } }
+
+    for (const line of buildIcs(workshop(), ORIGIN, URL, long).split('\r\n')) {
+      assert.ok(new TextEncoder().encode(line).length <= 75, line)
+    }
+  })
+})

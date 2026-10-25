@@ -350,6 +350,11 @@ Mitteilungen, Abmelden), dasselbe Stylesheet, kein Footer. Inhalt in
 - **Löschen `.confirm`**: ein `<details>`, dessen `<summary>` wie ein kleiner
   Button aussieht; der eigentliche „Endgültig löschen“-Button steht darin.
   Ein Schritt mehr ohne JavaScript, anders als `confirm()`.
+- **Schreiben**: pro Anmeldung „Mail mit Kalender“ (Hauptbutton, Einladung als
+  Anhang über das Teilen-Menü), „E-Mail schreiben“ (mailto) und „Text
+  kopieren“. Wo das Gerät keine Dateien teilen kann, fehlt der erste, und
+  „E-Mail schreiben“ ist der Hauptbutton. Darüber ein `.note`, dass die Adresse
+  in der Zwischenablage liegt.
 - **Vorlage**: `.placeholders` listet die Platzhalter, `.mail-preview` zeigt
   die ausgefüllte Mail in einem Rahmen `--rule`, Zeilenumbrüche wie in der
   Mail (`white-space: pre-line`).

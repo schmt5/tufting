@@ -1,7 +1,7 @@
 /**
  * Script des Admins: registriert den Service Worker, meldet auf der Seite
  * „Mitteilungen“ das Gerät für Push an und bietet bei den Anmeldungen
- * „Text kopieren“ und „Kalenderdatei teilen“ an. Alles andere im Admin
+ * „Mail mit Kalender“ und „Text kopieren“ an. Alles andere im Admin
  * funktioniert ohne JavaScript.
  */
 
@@ -18,7 +18,7 @@ const root = document.querySelector('[data-push]')
 if (root) setupPush(root)
 
 for (const button of document.querySelectorAll('[data-copy]')) setupCopy(button)
-for (const button of document.querySelectorAll('[data-share-ics]')) setupShare(button)
+for (const button of document.querySelectorAll('[data-invite]')) setupInvite(button)
 
 /** Kurze Rückmeldung auf dem Button selbst, danach wieder der alte Text. */
 function flashButton(button, text) {
@@ -48,23 +48,51 @@ function setupCopy(button) {
   })
 }
 
-/**
- * „Kalenderdatei teilen“: hängt die .ics-Datei über das Teilen-Menü an eine
- * Mail oder Nachricht. Nur sichtbar, wo der Browser Dateien teilen kann
- * (Handy, Safari) — am Desktop reicht der Link in der Mail.
- */
-function setupShare(button) {
+/** Kann dieses Gerät Dateien über das Teilen-Menü weitergeben? Meist nur Handys und Safari. */
+function canShareFiles() {
   const probe = new File([''], 'probe.ics', { type: 'text/calendar' })
-  if (!navigator.canShare?.({ files: [probe] })) return
+  return Boolean(navigator.canShare?.({ files: [probe] }))
+}
+
+/**
+ * „Mail mit Kalender“: öffnet das Teilen-Menü mit dem ausgefüllten Text und der
+ * Einladung als Anhang. In Mail gewählt, kommt der Text in die Nachricht und die
+ * Einladung als Datei dazu — so schlagen Gmail und Outlook den Termin vor.
+ *
+ * Die Datei wird schon beim Laden geholt: iOS öffnet das Teilen-Menü nur
+ * direkt aus dem Tippen heraus, und ein Download dazwischen kostet genau diese
+ * Erlaubnis. Den Empfänger kann das Teilen-Menü nicht setzen — die Adresse
+ * landet deshalb in der Zwischenablage, zum Einfügen ins Feld „An“.
+ */
+async function setupInvite(button) {
+  if (!canShareFiles()) return
+
+  let file
+  try {
+    const response = await fetch(button.dataset.invite)
+    if (!response.ok) throw new Error(`Einladung: ${response.status}`)
+    file = new File([await response.blob()], button.dataset.inviteName, { type: 'text/calendar' })
+  } catch (error) {
+    // Ohne Datei bleibt es bei „E-Mail schreiben“ mit dem Link im Text.
+    console.error('Einladung nicht geladen', error)
+    return
+  }
+
   button.hidden = false
+  // Wo der Anhang geht, ist er der Hauptweg; der mailto-Link tritt zurück.
+  button.parentElement?.querySelector('[data-mail-fallback]')?.classList.add('button--secondary')
+  for (const hint of document.querySelectorAll('[data-invite-hint]')) hint.hidden = false
 
   button.addEventListener('click', async () => {
-    try {
-      const response = await fetch(button.dataset.shareIcs)
-      if (!response.ok) throw new Error(`Kalenderdatei: ${response.status}`)
+    // Nicht abwarten: die Zwischenablage darf das Teilen nicht verzögern.
+    navigator.clipboard?.writeText(button.dataset.mailTo).catch(() => {})
 
-      const file = new File([await response.blob()], button.dataset.shareName, { type: 'text/calendar' })
-      await navigator.share({ files: [file], title: button.dataset.shareTitle })
+    try {
+      await navigator.share({
+        files: [file],
+        title: button.dataset.mailSubject,
+        text: button.dataset.mailBody,
+      })
     } catch (error) {
       // Abbrechen im Teilen-Menü ist kein Fehler.
       if (error?.name !== 'AbortError') {

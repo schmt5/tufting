@@ -46,7 +46,7 @@ import {
   type WorkshopWithSeats,
 } from './db.ts'
 import type { Env } from './env.ts'
-import { icsFilename } from './ics.ts'
+import { buildIcs, inviteFilename } from './ics.ts'
 import { notifyAdmin } from './notify.ts'
 import { isPlausibleSubscription, vapidConfig } from './push.ts'
 import {
@@ -59,9 +59,8 @@ import {
   WORKSHOP_FIELDS,
 } from './forms.ts'
 import { originOf } from './seo.ts'
-import { WORKSHOP } from './site.ts'
+import { BUSINESS, WORKSHOP } from './site.ts'
 import {
-  calendarPath,
   CONFIRMATION,
   DEFAULT_TEMPLATE,
   signupMail,
@@ -70,6 +69,7 @@ import {
 } from './template.ts'
 import { weekdayDate } from './views/admin/format.ts'
 import { adminLayout } from './views/admin/layout.ts'
+import { signupPath } from './views/signup.ts'
 import { renderNotifications } from './views/admin/notifications.ts'
 import { renderTemplateForm } from './views/admin/template.ts'
 import { renderLogin, renderNotConfigured } from './views/admin/login.ts'
@@ -241,8 +241,7 @@ async function showWorkshop(c: AdminContext, workshop: WorkshopWithSeats, manual
 
   const context: MailContext = {
     mails: new Map(signups.map((signup) => [signup.id, signupMail(template, workshop, signup, origin)])),
-    calendarUrl: `${origin}${calendarPath(workshop.id)}`,
-    calendarFilename: icsFilename(workshop.date),
+    inviteFilename: inviteFilename(workshop.date),
   }
 
   return page(c, `Termin ${weekdayDate(workshop.date)}`, renderWorkshop(workshop, signups, context, manual), status)
@@ -310,6 +309,33 @@ admin.post('/anmeldungen', async (c) => {
   }
 
   return c.redirect(`${workshopPath(workshop.id)}?meldung=eingetragen#anmeldung-${inserted.id}`, 303)
+})
+
+/**
+ * Kalender-Einladung für eine Anmeldung, als Anhang für Nairas Mail
+ * („Mail mit Kalender“). Hinter dem Login, weil sie Name und Adresse der
+ * Person enthält — anders als die öffentliche Datei unter /termin/….
+ */
+admin.get('/anmeldungen/:id/einladung.ics', async (c) => {
+  const signup = await getSignup(c.env.DB, c.req.param('id'))
+  if (!signup) return notFound(c)
+
+  const workshop = await getWorkshop(c.env.DB, signup.workshop_id)
+  if (!workshop) return notFound(c)
+
+  const origin = originOf(c.req.url)
+  const invite = BUSINESS.email
+    ? {
+        organizer: { name: BUSINESS.person, email: BUSINESS.email },
+        attendee: { name: `${signup.first_name} ${signup.last_name}`, email: signup.email },
+      }
+    : undefined
+
+  return c.body(buildIcs(workshop, origin, `${origin}${signupPath(workshop.id)}`, invite), 200, {
+    // method= sagt Mail-Apps, dass es eine Einladung ist und keine blosse Datei.
+    'Content-Type': `text/calendar; charset=utf-8; method=${invite ? (workshop.status === 'cancelled' ? 'CANCEL' : 'REQUEST') : 'PUBLISH'}`,
+    'Content-Disposition': `attachment; filename="${inviteFilename(workshop.date)}"`,
+  })
 })
 
 /**

@@ -126,46 +126,54 @@ function state(signup: SignupRow): Html {
   return html`<span class="tag tag--strong">Neu</span>`
 }
 
-/** Was Naira braucht, um der Person zu schreiben: ausgefüllte Vorlage und Kalenderdatei. */
+/** Was Naira braucht, um der Person zu schreiben: die ausgefüllte Vorlage pro Anmeldung. */
 export interface MailContext {
   mails: Map<string, SignupMail>
-  calendarUrl: string
-  calendarFilename: string
+  /** Dateiname der Einladung, z.B. `einladung-2026-11-28.ics`. */
+  inviteFilename: string
 }
 
 /**
- * Schreiben: der mailto-Link funktioniert überall. Kopieren und Teilen
- * brauchen JavaScript und eine passende Schnittstelle im Browser — deshalb
- * stehen sie versteckt im HTML, und /admin/admin.js zeigt sie nur, wo sie
- * auch gehen.
+ * Drei Wege zu schreiben:
  *
- * Teilen hängt die Kalenderdatei als Datei an. Einen Empfänger kann die
- * Teilen-Funktion nicht setzen; den wählt Naira in der Mail-App selbst.
+ * - „E-Mail schreiben“ ist ein mailto-Link und geht überall — aber ohne
+ *   Anhang, das lässt mailto nicht zu. Der Kalender steht dann als Link im
+ *   Text.
+ * - „Mail mit Kalender“ hängt die Einladung als echte Datei an, über das
+ *   Teilen-Menü des Geräts (Web Share). Erst als Anhang schlagen Gmail und
+ *   Outlook den Termin direkt vor. Einen Empfänger kann das Teilen-Menü nicht
+ *   setzen; admin.js kopiert deshalb die Adresse in die Zwischenablage.
+ * - „Text kopieren“ für Mail-Apps, die mit langen mailto-Links nicht umgehen
+ *   können.
+ *
+ * Die beiden letzten brauchen JavaScript und eine passende Schnittstelle im
+ * Browser — sie stehen versteckt im HTML, und /admin/admin.js zeigt sie nur,
+ * wo sie auch gehen. Teilen mit Datei gibt es vor allem auf dem Handy.
  */
 function mailActions(signup: SignupRow, context: MailContext): Html {
   const mail = context.mails.get(signup.id)
   if (!mail) return html``
 
-  return html`<a class="button button--small" href="${mail.mailto}">E-Mail schreiben</a>
+  return html`<button
+      class="button button--small"
+      type="button"
+      data-invite="/admin/anmeldungen/${signup.id}/einladung.ics"
+      data-invite-name="${context.inviteFilename}"
+      data-mail-to="${signup.email}"
+      data-mail-subject="${mail.subject}"
+      data-mail-body="${mail.body}"
+      hidden
+    >
+      Mail mit Kalender
+    </button>
+    <a class="button button--small" href="${mail.mailto}" data-mail-fallback>E-Mail schreiben</a>
     <button
       class="button button--small button--secondary"
       type="button"
-      data-copy="${mail.subject}
-
-${mail.body}"
+      data-copy="${mail.subject}\n\n${mail.body}"
       hidden
     >
       Text kopieren
-    </button>
-    <button
-      class="button button--small button--secondary"
-      type="button"
-      data-share-ics="${context.calendarUrl}"
-      data-share-name="${context.calendarFilename}"
-      data-share-title="${mail.subject}"
-      hidden
-    >
-      Kalenderdatei teilen
     </button>`
 }
 
@@ -271,6 +279,10 @@ export function renderWorkshop(
 
     <section class="admin-section" aria-labelledby="anmeldungen">
       <h2 class="section__title" id="anmeldungen">Anmeldungen</h2>
+      <p class="note" data-invite-hint hidden>
+        „Mail mit Kalender“ hängt die Einladung an und kopiert die Adresse — in der Mail im Feld
+        „An“ einfügen.
+      </p>
       ${active.length > 0
         ? html`<ul class="admin-signups" role="list">
             ${active.map((signup) => signupItem(signup, context))}

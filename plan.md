@@ -364,12 +364,26 @@ Pro Anmeldung im Admin:
 - CRLF-Zeilenenden, Zeilen über 75 Byte gefaltet, `,` `;` `\` und
   Zeilenumbrüche maskiert. Dafür Unit-Tests.
 
-**Warum ein Link und kein Anhang**: Ein `mailto:`-Link kann keine Dateien
-anhängen. Der Link `{kalender}` im Text tut dasselbe — ein Tipp darauf legt den
-Termin im Kalender an. Die Datei enthält nur Workshopdaten und darf öffentlich
-sein. Wer sie doch als Anhang will, bekommt im Admin zusätzlich „Kalenderdatei
-teilen“ (Web Share API mit Datei); dort muss Naira den Empfänger dann selbst
-wählen, weil die Share-Funktion keinen Empfänger setzen kann.
+**Link und Anhang**: Ein `mailto:`-Link kann keine Dateien anhängen. Deshalb
+steht `{kalender}` als Link im Text — die öffentliche Datei enthält nur
+Workshopdaten. Damit Gmail und Outlook den Termin direkt vorschlagen (Karte mit
+„Ja / Vielleicht / Nein“), braucht es aber eine **Einladung als Anhang**:
+
+- `GET /admin/anmeldungen/{id}/einladung.ics`, hinter dem Login:
+  `METHOD:REQUEST`, Naira als ORGANIZER, die Person als ATTENDEE mit
+  `RSVP=TRUE`, dieselbe UID wie die öffentliche Datei. Bei abgesagtem Termin
+  `METHOD:CANCEL`. Die Antwort der Person kommt als Mail in Nairas Postfach.
+- „Mail mit Kalender“ pro Anmeldung öffnet das Teilen-Menü (Web Share) mit
+  Betreff, ausgefülltem Text und der Einladung als Datei. Die Datei wird beim
+  Laden der Seite geholt, weil iOS das Teilen-Menü nur direkt aus dem Tippen
+  heraus öffnet. Einen Empfänger kann das Teilen-Menü nicht setzen — die
+  Adresse kommt in die Zwischenablage, Naira fügt sie im Feld „An“ ein.
+- Geht nur, wo der Browser Dateien teilen kann (iPhone, Android). Am Laptop
+  bleibt „E-Mail schreiben“ mit dem Link.
+
+Ganz ohne Umweg ginge es nur mit Versand aus dem Admin (Cloudflare Email
+Sending: eigene Domain, Workers Paid) — eine bewusste Änderung von §14, für
+später.
 
 ## 9. Datenschutz
 
@@ -568,7 +582,7 @@ Stand: umgesetzt. Vorlage unter `/admin/vorlage` mit Platzhaltern, Vorschau,
 Warnung bei unbekannten Platzhaltern und „Standardtext wiederherstellen“. Ohne
 eigene Fassung gilt der Standardtext aus `template.ts` — angelegt wird erst
 beim Speichern. Pro Anmeldung: „E-Mail schreiben“ (mailto mit ausgefüllter
-Vorlage), „Text kopieren“, „Kalenderdatei teilen“ (nur wo der Browser Dateien
+Vorlage), „Text kopieren“, „Mail mit Kalender“ (Einladung als Anhang, nur wo der Browser Dateien
 teilen kann, also auf dem Handy). Kalenderdatei unter `/termin/{id}.ics`,
 abgesagte Termine als CANCELLED. Tests in `ics.test.ts`, `template.test.ts`,
 `admin.test.ts`, `signup.test.ts`. Nicht geprüft: Kopieren und Teilen auf
