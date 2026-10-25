@@ -366,7 +366,9 @@ erscheinen soll.
 
 Drei Blöcke in einer Zeile, `--text-xs` in `--ink-muted`, darüber eine
 Haarlinie in `--rule` — nicht in `--ink`: der Footer schliesst ab, er
-gliedert nicht. Inhalt: Anschrift, Rechtstexte, Jahr und Wortmarke.
+gliedert nicht. Inhalt: Anschrift, Rechtstexte und der Link „Admin“, Jahr und
+Wortmarke. Der Admin-Link steht bewusst klein hier unten: er ist Nairas Weg
+hinein, nicht ein Angebot an Besucher.
 
 Die Anschrift steht in einem `<address>` mit `font-style: normal` — die Seite
 kennt keinen kursiven Schnitt. Sie ist nicht Dekoration: lokale Suche braucht

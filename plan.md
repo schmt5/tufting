@@ -492,7 +492,7 @@ lokale workerd, lokal grün heisst nicht deploybar.
 Jede Phase ist für sich deploybar. Während der Phasen 1–5 lief die
 Tally-Version öffentlich weiter, umgeschaltet über eine Var `SIGNUP_BACKEND`.
 Weil die Seite noch in der Dev-Phase ist, wurde Tally dann ganz entfernt statt
-erst nach dem Livegang.
+erst nach dem Livegang. Der Admin ist im Footer verlinkt.
 
 ### Phase 1 — Datenbank (2–3h)
 
@@ -598,6 +598,7 @@ Erledigt:
   `login_failures` nach einem Tag (`cleanup.ts`)
 - [x] Tally entfernt: `tally.ts`, `tally.js`, `SIGNUP_BACKEND`, das Secret
   `TALLY_TOKEN`, die Tally-Fassung der Datenschutzerklärung
+- [x] Admin-Link im Footer
 - [x] Turnstile in der Dev-Phase mit den Test-Schlüsseln von Cloudflare
 
 Offen:

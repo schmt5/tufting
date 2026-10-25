@@ -15,10 +15,12 @@ const NAV = [
   { href: '/#ueber-mich', label: 'Über mich' },
 ]
 
-/** Rechtstexte im Footer. Eigene Routen, siehe views/legal.ts. */
+/** Links im Footer: Rechtstexte (views/legal.ts) und der Admin. */
 const LEGAL = [
   { href: '/impressum', label: 'Impressum' },
   { href: '/datenschutz', label: 'Datenschutz' },
+  // Der Weg für Naira in den Admin. Hinter dem Login, und noindex.
+  { href: '/admin', label: 'Admin' },
 ]
 
 export interface LayoutOptions {
@@ -150,7 +152,7 @@ export function layout(options: LayoutOptions, content: Html | string): Html {
         <footer class="site-footer">
           <div class="wrap site-footer__inner">
             ${address()}
-            <nav aria-label="Rechtliches">
+            <nav aria-label="Weitere Seiten">
               <ul class="site-footer__legal" role="list">
                 ${LEGAL.map((item) => html`<li><a href="${item.href}">${item.label}</a></li>`)}
               </ul>

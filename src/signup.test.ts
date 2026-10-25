@@ -325,6 +325,11 @@ describe('Kontakt und Datenschutz', () => {
     assert.equal((await get('/kontakt')).status, 404)
   })
 
+  it('verlinkt den Admin im Footer', async () => {
+    const text = await (await get('/')).text()
+    assert.match(text, /<footer[\s\S]*href="\/admin"[\s\S]*<\/footer>/)
+  })
+
   it('beschreibt Datenbank, Mitteilung und Turnstile in der Datenschutzerklärung', async () => {
     const text = await (await get('/datenschutz')).text()
 
