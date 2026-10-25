@@ -10,7 +10,17 @@
   },
   "observability": {
     "enabled": true
-  }
+  },
+  // Termine und Anmeldungen. Ohne database_id: lokal legt wrangler die
+  // Datenbank unter .wrangler/state an, beim ersten Deploy wird sie
+  // provisioniert. Schema in ./migrations, siehe plan.md §4.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tufting",
+      "migrations_dir": "./migrations"
+    }
+  ]
   // "compatibility_flags": [
   //   "nodejs_compat"
   // ],

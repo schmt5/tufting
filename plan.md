@@ -478,6 +478,12 @@ verlinkt ist er nirgends.
 
 ### Phase 1 — Datenbank (2–3h)
 
+Stand: lokal umgesetzt — Migration, `db.ts`, Tests in `db.test.ts` gegen eine
+lokale D1. Ein Gegentest mit getrenntem Lesen und Schreiben setzte im selben
+Aufbau 12 Personen auf 4 Plätze; der Check in einem Statement lässt genau 4
+zu. Offen: die Datenbank bei Cloudflare anlegen (Standort Europa) und die
+Migration remote einspielen — braucht `wrangler login`.
+
 - D1 anlegen (Standort Europa), Migration `0001_init.sql`
 - `db.ts` mit den Abfragen für Startseite, Anmeldeseite, Admin
 - Test: der Platz-Check aus §5 lehnt die Überbuchung ab, auch bei zwei
