@@ -73,8 +73,9 @@ Kein öffentlicher API-Endpoint. Der Tally-Token verlässt den Worker nie.
 
 ### Datenfluss-Randfall
 
-Fällt die Tally-API aus, darf die Seite nicht mit 500 antworten. Vorgesehen:
-Fehler abfangen, leeres Grid mit Hinweistext rendern, Fehler nach Sentry.
+Fällt die Tally-API aus, darf die Seite nicht mit 500 antworten. Der Fehler wird
+abgefangen, das Grid bleibt leer und zeigt einen Hinweistext. Sichtbar wird der
+Ausfall nur über `console.error` in den Observability-Logs von Cloudflare.
 
 ## 4. Projektstruktur
 
