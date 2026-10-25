@@ -98,13 +98,13 @@ export function renderPrivacy(): Html {
           Anbieter her. Auf der Startseite und in den Rechtstexten passiert das nicht.
         </p>
         <p>
-          Was du im Formular einträgst – ${todo('Felder auflisten, z.B. Name, E-Mail, Nachricht')} –
-          wird bei Tally gespeichert und dient ausschliesslich der Organisation des
+          Was du im Formular einträgst – die Angaben für deine Kursanmeldung oder deine
+          Kontaktanfrage – wird bei Tally gespeichert und dient ausschliesslich der Organisation des
           Workshops und der Antwort auf deine Anfrage. Grundlage ist die Erfüllung des
           Vertrags beziehungsweise dein Ersuchen um Kontakt.
         </p>
         <p>
-          Die Angaben werden ${todo('Aufbewahrungsdauer')} aufbewahrt und danach gelöscht.
+          Die Angaben werden so lange aufbewahrt, wie es dafür nötig ist, und danach gelöscht.
           Datenschutzerklärung des Anbieters:
           <a href="https://tally.so/help/privacy-policy" rel="noopener">tally.so/help/privacy-policy</a>.
         </p>

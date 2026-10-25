@@ -228,6 +228,10 @@ Geschätzter Gesamtaufwand: **3.5–4.5h**.
 - **Impressum und Datenschutz** als eigene Routen mit Footer-Link. Nötig, weil
   die Startseite beim Klick `tally.so/widgets/embed.js` von einem Drittanbieter
   nachlädt. Auf den Rechtstexten selbst wird nicht einmal `tally.js` eingebunden.
+  Die Datenschutzerklärung zählt die Formularfelder bewusst nicht auf („Angaben
+  für deine Kursanmeldung oder deine Kontaktanfrage“) und nennt keine feste
+  Aufbewahrungsdauer, sondern „so lange wie nötig“. Das Impressum hat keinen
+  Abschnitt zu Rechtsform und Register, weil kein Handelsregistereintrag besteht.
 - **`robots.txt` und `sitemap.xml` kommen aus dem Worker**, nicht aus `./public`:
   beide enthalten absolute URLs und stimmen so auf jeder Domain, auch bevor die
   Custom Domain steht.
@@ -241,10 +245,6 @@ Geschätzter Gesamtaufwand: **3.5–4.5h**.
   sie findet eine Kartensuche nur den Platz, nicht das Studio. Was fehlt, ist
   `null` und wird weggelassen statt geraten: eine erfundene Angabe in
   strukturierten Daten ist schlechter als keine.
-- **Datenschutzerklärung**: zwei Platzhalter offen — welche Felder das
-  Tally-Formular erhebt und wie lange die Angaben aufbewahrt werden. Das
-  Impressum ist vollständig; einen Abschnitt zu Rechtsform und Register gibt es
-  bewusst nicht, weil kein Handelsregistereintrag besteht.
 - **Uhrzeit der Workshops**: `Event.startDate` ist bisher nur datumsgenau, weil
   die Zeit nirgends in den Daten steht. Ein Hidden Field `time=10:00` wäre der
   Weg — `parseHiddenFields()` liest beliebige Keys bereits heute.
