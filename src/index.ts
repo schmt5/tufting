@@ -310,7 +310,7 @@ app.get('/datenschutz', (c) =>
         description: 'Welche Daten diese Seite bearbeitet, wozu und wie lange.',
         canonical: `${originOf(c.req.url)}/datenschutz`,
       },
-      renderPrivacy(),
+      renderPrivacy({ ownSignup: usesDatabase(c.env) }),
     ),
   ),
 )

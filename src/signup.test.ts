@@ -320,16 +320,37 @@ describe('Kalenderdatei', () => {
   })
 })
 
-describe('Kontakt', () => {
+describe('Kontakt und Datenschutz', () => {
   it('führt „Schreibe mir“ als E-Mail-Link mit Betreff, ohne Kontaktseite', async () => {
     const text = await (await get('/')).text()
 
     assert.match(text, /href="mailto:tuftingstudio\.bern%40outlook\.com\?subject=Anfrage%20Tufting-Workshop"/)
     assert.equal((await get('/kontakt')).status, 404)
   })
+
+  it('beschreibt mit der eigenen Anmeldung Datenbank, Mitteilung und Turnstile, nicht Tally', async () => {
+    const text = await (await get('/datenschutz')).text()
+
+    assert.match(text, /nur\s+in der EU/)
+    assert.match(text, /Turnstile/)
+    assert.match(text, /Mitteilung auf ihr Gerät/)
+    assert.doesNotMatch(text, /tally\.so/)
+  })
 })
 
 describe('mit SIGNUP_BACKEND=tally', () => {
+  it('beschreibt die Datenschutzerklärung Tally statt der eigenen Datenbank', async () => {
+    const saved = env
+    env = { ...env, SIGNUP_BACKEND: 'tally' }
+    try {
+      const text = await (await get('/datenschutz')).text()
+      assert.match(text, /tally\.so/)
+      assert.doesNotMatch(text, /Turnstile/)
+    } finally {
+      env = saved
+    }
+  })
+
   it('gibt es weder Absenden noch Danke-Seite', async () => {
     const id = await createWorkshop(env.DB, workshopInput())
     const saved = env
