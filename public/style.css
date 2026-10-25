@@ -487,8 +487,7 @@ main:focus {
   max-width: 34rem;
 }
 
-.contact__open,
-.contact__pending {
+.contact__open {
   margin-top: var(--space-4);
 }
 

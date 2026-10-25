@@ -9,7 +9,7 @@ import { field, parseSignupForm, SIGNUP_FIELDS } from './forms.ts'
 import { buildIcs, icsFilename } from './ics.ts'
 import { newSignupMessage, notifyAdmin } from './notify.ts'
 import { buildGraph, jsonLd, originOf } from './seo.ts'
-import { BUSINESS, CONTACT_FORM_ID, CONTACT_PATH } from './site.ts'
+import { BUSINESS } from './site.ts'
 import { SIGNUP_ACTION, TOKEN_FIELD, turnstileConfig, verifyTurnstile } from './turnstile.ts'
 import {
   formatWorkshopDate,
@@ -29,7 +29,6 @@ import { layout } from './views/layout.ts'
 import { renderImprint, renderNotFound, renderPrivacy } from './views/legal.ts'
 import { renderSchedule } from './views/schedule.ts'
 import {
-  renderContactPage,
   renderSignup,
   renderSignupForm,
   renderSignupUnavailable,
@@ -286,26 +285,6 @@ app.get('/anmeldung/:id/danke', async (c) => {
         noindex: true,
       },
       renderThanks(workshop),
-    ),
-  )
-})
-
-/**
- * Kontaktformular, derselbe Weg wie die Anmeldung. Ohne ID gibt es die Seite
- * nicht — dann steht auch auf der Startseite kein Link dorthin.
- */
-app.get(CONTACT_PATH, (c) => {
-  if (!CONTACT_FORM_ID) return c.notFound()
-
-  return c.html(
-    layout(
-      {
-        title: `Schreibe mir — ${BUSINESS.name}`,
-        description: `Kein passender Termin? Schreibe ${BUSINESS.person} für eine Alternative.`,
-        canonical: `${originOf(c.req.url)}${CONTACT_PATH}`,
-        tally: true,
-      },
-      renderContactPage(CONTACT_FORM_ID),
     ),
   )
 })

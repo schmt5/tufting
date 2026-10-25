@@ -320,6 +320,15 @@ describe('Kalenderdatei', () => {
   })
 })
 
+describe('Kontakt', () => {
+  it('führt „Schreibe mir“ als E-Mail-Link mit Betreff, ohne Kontaktseite', async () => {
+    const text = await (await get('/')).text()
+
+    assert.match(text, /href="mailto:tuftingstudio\.bern%40outlook\.com\?subject=Anfrage%20Tufting-Workshop"/)
+    assert.equal((await get('/kontakt')).status, 404)
+  })
+})
+
 describe('mit SIGNUP_BACKEND=tally', () => {
   it('gibt es weder Absenden noch Danke-Seite', async () => {
     const id = await createWorkshop(env.DB, workshopInput())

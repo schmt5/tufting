@@ -6,7 +6,8 @@ import { input, select, textarea } from './fields.ts'
 import type { Html } from './layout.ts'
 
 /**
- * Eigene Seite pro Formular: Anmeldung zu einem Termin und das Kontaktformular.
+ * Anmeldeseiten: das Tally-Embed (SIGNUP_BACKEND=tally) oder das eigene
+ * Formular (SIGNUP_BACKEND=d1), dazu die Danke-Seite.
  *
  * Warum eine Unterseite und kein Popup: die Formulare sind länger als ein
  * Popup hoch ist. Im Overlay scrollt man in einem Kasten im Kasten und sieht
@@ -109,17 +110,6 @@ export function renderSignup(workshop: Workshop): Html {
     formId: workshop.state === 'soldOut' ? null : workshop.id,
     formTitle: `Anmeldeformular: Workshop vom ${date}`,
     fallback: 'Dieser Termin ist ausgebucht.',
-    backHref: '/#termine',
-    backLabel: 'Alle Termine',
-  })
-}
-
-export function renderContactPage(formId: string): Html {
-  return formPage({
-    heading: 'Schreibe mir',
-    lead: 'Kein Termin passt? Schreib mir, wir schauen zusammen nach einer Alternative.',
-    formId,
-    formTitle: 'Kontaktformular',
     backHref: '/#termine',
     backLabel: 'Alle Termine',
   })

@@ -84,7 +84,10 @@ export function unknownPlaceholders(text: string): string[] {
  */
 export function mailtoLink(to: string, subject: string, body: string): string {
   const crlf = (text: string) => text.replace(/\r?\n/g, '\r\n')
-  return `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(crlf(subject))}&body=${encodeURIComponent(crlf(body))}`
+  const params = [`subject=${encodeURIComponent(crlf(subject))}`]
+  // Ein leerer Text bleibt weg — sonst setzen manche Apps einen leeren Absatz.
+  if (body) params.push(`body=${encodeURIComponent(crlf(body))}`)
+  return `mailto:${encodeURIComponent(to)}?${params.join('&')}`
 }
 
 /** Adresse der Kalenderdatei eines Workshops. Route und Vorlage lesen beide von hier. */
