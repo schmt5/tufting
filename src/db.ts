@@ -447,3 +447,22 @@ export async function saveTemplate(
 export async function deleteTemplate(db: D1Database, key: string): Promise<void> {
   await db.prepare('DELETE FROM templates WHERE key = ?1').bind(key).run()
 }
+
+/**
+ * Löscht die Anmeldungen aller Workshops vor `cutoff` (ISO-Datum). Die
+ * Workshops selbst bleiben — sie enthalten keine Personendaten, und die
+ * Übersicht der vergangenen Termine stimmt weiter (dann mit 0 belegt).
+ */
+export async function deleteSignupsBefore(db: D1Database, cutoff: string): Promise<number> {
+  const result = await db
+    .prepare('DELETE FROM signups WHERE workshop_id IN (SELECT id FROM workshops WHERE date < ?1)')
+    .bind(cutoff)
+    .run()
+  return result.meta.changes
+}
+
+/** Fehlversuche älter als `before` (Unix-Sekunden). Sie zählen für die Sperre ohnehin nicht mehr. */
+export async function deleteLoginFailuresBefore(db: D1Database, before: number): Promise<number> {
+  const result = await db.prepare('DELETE FROM login_failures WHERE at < ?1').bind(before).run()
+  return result.meta.changes
+}

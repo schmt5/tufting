@@ -2,6 +2,7 @@ import { type Context, Hono } from 'hono'
 import { html } from 'hono/html'
 import admin from './admin.ts'
 import { clientIp } from './auth.ts'
+import { cleanup } from './cleanup.ts'
 import { getPublishedWorkshop, getWorkshop, insertSignup, listPublishedWorkshops } from './db.ts'
 import { type Env, usesDatabase } from './env.ts'
 import { field, parseSignupForm, SIGNUP_FIELDS } from './forms.ts'
@@ -428,4 +429,22 @@ app.notFound((c) =>
   ),
 )
 
-export default app
+/**
+ * Der Worker: Requests gehen an die Hono-App, der tägliche Cron räumt auf
+ * (cleanup.ts). `app` steht zusätzlich als benannter Export da, damit die
+ * Tests sie direkt aufrufen können.
+ */
+export { app }
+
+export default {
+  fetch: app.fetch,
+
+  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(
+      cleanup(env.DB).then(
+        (result) => console.log('Aufräumen:', result),
+        (error) => console.error('Aufräumen fehlgeschlagen', error),
+      ),
+    )
+  },
+} satisfies ExportedHandler<Env>

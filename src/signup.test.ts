@@ -16,7 +16,7 @@ import {
   type WorkshopInput,
 } from './db.ts'
 import type { Env } from './env.ts'
-import app from './index.ts'
+import { app } from './index.ts'
 import { resetDatabase, testDatabase, testDeviceKeys, testVapidKeys } from './test-support.ts'
 
 const DATE = '2099-01-10'

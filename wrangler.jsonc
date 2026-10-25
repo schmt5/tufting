@@ -24,6 +24,10 @@
     "VAPID_PUBLIC_KEY": "BK_X2bPonW4fPM0b-8pzDTq3fdcVgoTSfw72CkyRSv22LD7fNT8u9rgcFrYByM4180akU9uyStL4jxkVUw1q0Xk",
     "VAPID_SUBJECT": "mailto:tuftingstudio.bern@outlook.com"
   },
+  // Täglich 03:00 UTC: alte Anmeldungen und Login-Fehlversuche löschen (cleanup.ts).
+  "triggers": {
+    "crons": ["0 3 * * *"]
+  },
   // Termine und Anmeldungen. Angelegt mit `--jurisdiction eu`: die Daten
   // liegen und werden verarbeitet nur in der EU. Lokal liegt die Datenbank
   // unter .wrangler/state. Schema in ./migrations, siehe plan.md §4.
