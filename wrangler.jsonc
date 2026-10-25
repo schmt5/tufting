@@ -11,13 +11,14 @@
   "observability": {
     "enabled": true
   },
-  // Termine und Anmeldungen. Ohne database_id: lokal legt wrangler die
-  // Datenbank unter .wrangler/state an, beim ersten Deploy wird sie
-  // provisioniert. Schema in ./migrations, siehe plan.md §4.
+  // Termine und Anmeldungen. Angelegt mit `--jurisdiction eu`: die Daten
+  // liegen und werden verarbeitet nur in der EU. Lokal liegt die Datenbank
+  // unter .wrangler/state. Schema in ./migrations, siehe plan.md §4.
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "tufting",
+      "database_id": "e6024c40-9c67-4e01-8343-e10d40059de7",
       "migrations_dir": "./migrations"
     }
   ]

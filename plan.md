@@ -381,9 +381,8 @@ Die Personendaten liegen neu in der eigenen Datenbank statt bei Tally. Das
   Formular ausfüllt. Gleicher Anbieter wie das Hosting.
 - **Aufbewahrung** bleibt „so lange wie nötig“ im Text. Technisch löscht der
   Cron Anmeldungen 3 Monate nach dem Workshop.
-- **Speicherort**: D1 mit Standort in Europa anlegen
-  (`--location weur`, bzw. `--jurisdiction eu`, falls verfügbar — in Phase 1
-  prüfen). Dann steht in der Erklärung, wo die Daten liegen.
+- **Speicherort**: Die D1 ist mit `--jurisdiction eu` angelegt — die Daten
+  liegen und werden verarbeitet nur in der EU. Das gehört so in die Erklärung.
 - **Push**: Die Mitteilung an Naira läuft verschlüsselt über den Push-Dienst
   von Apple bzw. Google. Sie enthält Vorname, Initial des Nachnamens und
   Personenzahl — mehr nicht.
@@ -478,11 +477,11 @@ verlinkt ist er nirgends.
 
 ### Phase 1 — Datenbank (2–3h)
 
-Stand: lokal umgesetzt — Migration, `db.ts`, Tests in `db.test.ts` gegen eine
-lokale D1. Ein Gegentest mit getrenntem Lesen und Schreiben setzte im selben
-Aufbau 12 Personen auf 4 Plätze; der Check in einem Statement lässt genau 4
-zu. Offen: die Datenbank bei Cloudflare anlegen (Standort Europa) und die
-Migration remote einspielen — braucht `wrangler login`.
+Stand: umgesetzt — Migration, `db.ts`, Tests in `db.test.ts` gegen eine lokale
+D1. Ein Gegentest mit getrenntem Lesen und Schreiben setzte im selben Aufbau
+12 Personen auf 4 Plätze; der Check in einem Statement lässt genau 4 zu. Die
+Datenbank bei Cloudflare ist mit `--jurisdiction eu` angelegt, die Migration
+remote eingespielt.
 
 - D1 anlegen (Standort Europa), Migration `0001_init.sql`
 - `db.ts` mit den Abfragen für Startseite, Anmeldeseite, Admin
