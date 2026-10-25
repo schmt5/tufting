@@ -33,11 +33,6 @@ export interface LayoutOptions {
   /** Fehlerseiten gehören nicht in den Index. */
   noindex?: boolean
   /**
-   * Embed-Script einbinden. Nur auf den Formularseiten true — Startseite und
-   * Rechtstexte laden damit weder eigenes Script noch eines von Tally.
-   */
-  tally?: boolean
-  /**
    * Turnstile-Script einbinden. Nur auf der eigenen Anmeldeseite — alle anderen
    * Seiten laden nichts von challenges.cloudflare.com.
    */
@@ -96,10 +91,6 @@ function address(): Html {
  *
  * role="list" steht an jeder Liste ohne Punkte: Safari nimmt einer <ul> mit
  * list-style:none die Listensemantik, VoiceOver zählt die Einträge sonst nicht.
- *
- * /tally.js steht am Ende des Body, nicht im Head: es sucht die Embeds im
- * Dokument, vorher gibt es sie noch nicht. embed.js von Tally holt es selbst
- * nach.
  */
 export function layout(options: LayoutOptions, content: Html | string): Html {
   const origin = originOfCanonical(options.canonical)
@@ -168,7 +159,6 @@ export function layout(options: LayoutOptions, content: Html | string): Html {
           </div>
         </footer>
 
-        ${options.tally ? html`<script type="module" src="/tally.js"></script>` : ''}
       </body>
     </html>`
 }

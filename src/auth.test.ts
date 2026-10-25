@@ -8,7 +8,7 @@ import type { Env } from './env.ts'
 const SECRETS = { password: 'richtig-und-lang', sessionSecret: 's'.repeat(32) }
 
 function env(overrides: Partial<Env>): Env {
-  return { DB: undefined as unknown as D1Database, TALLY_TOKEN: '', ...overrides }
+  return { DB: undefined as unknown as D1Database, ...overrides }
 }
 
 describe('adminSecrets', () => {

@@ -1,18 +1,11 @@
 # Vorlage für .dev.vars (lokale Secrets für `wrangler dev`, nicht im Repo).
 # Kopieren nach .dev.vars und Werte setzen. In Produktion: `wrangler secret put <NAME>`.
 
-# Token der Tally-API — nur bis zur Umstellung auf die eigene Anmeldung.
-TALLY_TOKEN=
-
 # Passwort für /admin. Lokal irgendein Wert, in Produktion ein langes.
 ADMIN_PASSWORD=
 
 # Schlüssel für das Session-Cookie, mindestens 32 Zeichen, z.B. `openssl rand -hex 32`.
 SESSION_SECRET=
-
-# Quelle der öffentlichen Seite: `tally` oder `d1`. Lokal `d1`, um die eigene
-# Anmeldung zu sehen.
-SIGNUP_BACKEND=d1
 
 # Turnstile lokal mit den öffentlichen Test-Schlüsseln von Cloudflare: der
 # Sitekey besteht immer, das Secret akzeptiert das Dummy-Token, und siteverify

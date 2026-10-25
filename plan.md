@@ -15,9 +15,9 @@ Naira schreibt den Teilnehmenden **selbst**. Die Seite verschickt keine E-Mails
 an Kundinnen und Kunden; sie hilft nur beim Schreiben — mit einer Textvorlage
 und einer Kalenderdatei (`.ics`) pro Termin.
 
-### Bisheriger Stand: die Tally-Version
+### Vorgeschichte: die Tally-Version (entfernt)
 
-Bis jetzt kamen Termine und Anmeldung aus Tally: jedes Formular ein Termin,
+Anfangs kamen Termine und Anmeldung aus Tally: jedes Formular ein Termin,
 Datum und freie Plätze als Hidden Fields, das Formular als iframe auf
 `/anmeldung/{formId}`. Das läuft (Phase 1–4 der alten Planung), hat aber drei
 Grenzen, die sich in Tally nicht lösen lassen:
@@ -32,8 +32,9 @@ Grenzen, die sich in Tally nicht lösen lassen:
 - **Naira sieht die Anmeldungen nur in Tally**, ohne Bezug zu Plätzen und
   Terminen.
 
-Mit eigener Datenbank fallen alle drei weg. Tally verschwindet aus dem Projekt
-(siehe §12, Phase 6).
+Mit eigener Datenbank fallen alle drei weg. Tally ist inzwischen ganz aus dem
+Projekt entfernt: Code, Script, Token und die Erwähnung in der
+Datenschutzerklärung.
 
 ## 2. Stack-Entscheidungen
 
@@ -422,7 +423,7 @@ gibt es nur im Admin.
 │       ├── layout.ts, gallery.ts, intro.ts, schedule.ts, card.ts,
 │       │   about.ts, legal.ts                   # öffentliche Seite
 │       ├── fields.ts        # Formularfelder mit Label und Fehlermeldung
-│       ├── signup.ts        # Anmeldeformular, Danke-Seite (statt Tally-Embed)
+│       ├── signup.ts        # Anmeldeformular, Danke-Seite
 │       └── admin/           # Layout, Login, Übersicht, Termin, Vorlage
 ├── public/
 │   ├── style.css            # Tokens und Regeln, Admin nutzt dieselben
@@ -451,7 +452,6 @@ fallen weg.
   ],
   "triggers": { "crons": ["0 3 * * *"] },   // täglich 03:00 UTC aufräumen
   "vars": {
-    "SIGNUP_BACKEND": "tally",              // bis Phase 6, danach entfernt
     "TURNSTILE_SITE_KEY": "…",
     "TURNSTILE_HOSTNAMES": "naira-tufting.ch", // nie localhost
     "VAPID_PUBLIC_KEY": "…",
@@ -469,8 +469,13 @@ wrangler secret put TURNSTILE_SECRET_KEY
 wrangler secret put VAPID_PRIVATE_KEY
 ```
 
-`TALLY_TOKEN` wird nach der Umstellung gelöscht. Welche Werte lokal nötig sind,
-steht in `.dev.vars.example`.
+Welche Werte lokal nötig sind, steht in `.dev.vars.example`.
+
+**Dev-Phase:** Auf `tufting.pablo-sokey.workers.dev` laufen die öffentlichen
+Test-Schlüssel von Turnstile (Sitekey `1x0000…AA`, Hostname `example.com`,
+das Test-Secret als `TURNSTILE_SECRET_KEY`). Sie bestehen immer, schützen
+also nicht vor Bots. Vor dem Livegang ersetzt sie ein echtes Widget für die
+Domain.
 
 Lokal liegt die Datenbank unter `.wrangler/state`. Nach einem frischen Checkout
 oder einer neuen Migration einmal einspielen:
@@ -484,11 +489,10 @@ lokale workerd, lokal grün heisst nicht deploybar.
 
 ## 12. Umsetzung in Phasen
 
-Jede Phase ist für sich deploybar. Bis Phase 6 läuft die Tally-Version
-öffentlich weiter: Startseite und Anmeldeseite wählen ihre Quelle über die Var
-`SIGNUP_BACKEND` (`tally` oder `d1`), Standard bleibt `tally`. Lokal und in
-`.dev.vars` steht sie auf `d1`. Der Admin ist ab Phase 2 erreichbar, öffentlich
-verlinkt ist er nirgends.
+Jede Phase ist für sich deploybar. Während der Phasen 1–5 lief die
+Tally-Version öffentlich weiter, umgeschaltet über eine Var `SIGNUP_BACKEND`.
+Weil die Seite noch in der Dev-Phase ist, wurde Tally dann ganz entfernt statt
+erst nach dem Livegang.
 
 ### Phase 1 — Datenbank (2–3h)
 
@@ -580,11 +584,10 @@ der Kalender-Link legt den Termin auf iPhone und in Google Calendar richtig an.
 
 ### Phase 6 — Umstellung und Aufräumen (1–2h)
 
-Stand: der Teil ohne Domain ist umgesetzt — Cron, Kontakt-Link,
-Datenschutzerklärung, Design Guide. Die Datenschutzerklärung beschreibt je nach
-`SIGNUP_BACKEND` die Tally-Anmeldung oder die eigene (Datenbank in der EU,
-Mitteilung an Naira, Turnstile), damit sie vor und nach dem Umschalten stimmt.
-Der Cron läuft erst nach dem Deploy; getestet ist er in `cleanup.test.ts`.
+Stand: umgesetzt bis auf die Domain. Tally ist entfernt, die Seite läuft ganz
+auf der D1, die Datenschutzerklärung beschreibt nur noch die eigene Anmeldung.
+Deployt auf `tufting.pablo-sokey.workers.dev`, noch nicht öffentlich
+angekündigt (Dev-Phase).
 
 Erledigt:
 
@@ -593,18 +596,18 @@ Erledigt:
 - [x] Datenschutzerklärung nach §9, `DESIGN_GUIDE.md` nachgeführt
 - [x] Cron täglich 03:00 UTC: Anmeldungen 3 Monate nach dem Workshop,
   `login_failures` nach einem Tag (`cleanup.ts`)
+- [x] Tally entfernt: `tally.ts`, `tally.js`, `SIGNUP_BACKEND`, das Secret
+  `TALLY_TOKEN`, die Tally-Fassung der Datenschutzerklärung
+- [x] Turnstile in der Dev-Phase mit den Test-Schlüsseln von Cloudflare
 
-Offen, sobald die Domain steht:
+Offen:
 
-- [ ] Turnstile-Widget für die Zieldomain anlegen, Sitekey, Hostnamen und Secret
-  setzen (ohne sie bleibt die Anmeldung mit `d1` zu, statt ungeschützt)
-- [ ] Deploy, dann Push, Teilen und Kalender-Import auf Nairas iPhone prüfen
-- [ ] Termine im Admin erfassen, `SIGNUP_BACKEND` auf `d1` stellen
-- [ ] Tally-Code, `tally.js`, `TALLY_TOKEN`, die Tally-Variante der
-  Datenschutzerklärung und danach die Var selbst entfernen
+- [ ] Auf Nairas iPhone prüfen: Mitteilungen, Teilen, Kalender-Import
+- [ ] Vor dem Livegang: eigene Domain, dann ein echtes Turnstile-Widget dafür
+  (Sitekey, Hostname, Secret), `SITE_ORIGIN` setzen
 
-**Fertig wenn**: Kein Request geht mehr an Tally, und die Rechtstexte
-beschreiben, was die Seite tatsächlich tut.
+**Fertig wenn**: Die Seite läuft auf der eigenen Domain mit echtem Turnstile,
+und die Rechtstexte beschreiben, was die Seite tatsächlich tut.
 
 Geschätzter Gesamtaufwand: **14–20h**.
 

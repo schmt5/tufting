@@ -1,5 +1,5 @@
 /**
- * Die öffentliche Anmeldung mit SIGNUP_BACKEND=d1 von aussen: echte Requests
+ * Die öffentliche Anmeldung von aussen: echte Requests
  * an die App, eine lokale D1, siteverify durch einen Mock ersetzt.
  */
 
@@ -74,8 +74,6 @@ before(async () => {
   proxy = await testDatabase()
   env = {
     DB: proxy.env.DB,
-    TALLY_TOKEN: '',
-    SIGNUP_BACKEND: 'd1',
     TURNSTILE_SITE_KEY: 'sitekey-test',
     TURNSTILE_SECRET_KEY: 'secret-test',
     TURNSTILE_HOSTNAMES: HOST,
@@ -128,7 +126,6 @@ describe('Anmeldeseite', () => {
     assert.doesNotMatch(text, /<option value="4"/)
     assert.match(text, /class="cf-turnstile"\s+data-sitekey="sitekey-test"\s+data-action="signup"/)
     assert.match(text, /challenges\.cloudflare\.com\/turnstile\/v0\/api\.js/)
-    assert.doesNotMatch(text, /tally/)
   })
 
   it('kennt keine Entwürfe und keine unbekannten Termine', async () => {
@@ -328,40 +325,12 @@ describe('Kontakt und Datenschutz', () => {
     assert.equal((await get('/kontakt')).status, 404)
   })
 
-  it('beschreibt mit der eigenen Anmeldung Datenbank, Mitteilung und Turnstile, nicht Tally', async () => {
+  it('beschreibt Datenbank, Mitteilung und Turnstile in der Datenschutzerklärung', async () => {
     const text = await (await get('/datenschutz')).text()
 
     assert.match(text, /nur\s+in der EU/)
     assert.match(text, /Turnstile/)
     assert.match(text, /Mitteilung auf ihr Gerät/)
     assert.doesNotMatch(text, /tally\.so/)
-  })
-})
-
-describe('mit SIGNUP_BACKEND=tally', () => {
-  it('beschreibt die Datenschutzerklärung Tally statt der eigenen Datenbank', async () => {
-    const saved = env
-    env = { ...env, SIGNUP_BACKEND: 'tally' }
-    try {
-      const text = await (await get('/datenschutz')).text()
-      assert.match(text, /tally\.so/)
-      assert.doesNotMatch(text, /Turnstile/)
-    } finally {
-      env = saved
-    }
-  })
-
-  it('gibt es weder Absenden noch Danke-Seite', async () => {
-    const id = await createWorkshop(env.DB, workshopInput())
-    const saved = env
-    env = { ...env, SIGNUP_BACKEND: 'tally' }
-
-    try {
-      assert.equal((await post(`/anmeldung/${id}`, signupForm())).status, 404)
-      assert.equal((await get(`/anmeldung/${id}/danke`)).status, 404)
-    } finally {
-      env = saved
-    }
-    assert.deepEqual(await listSignups(env.DB, id), [])
   })
 })

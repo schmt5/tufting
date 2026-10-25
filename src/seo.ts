@@ -29,7 +29,7 @@ export function originOf(requestUrl: string): string {
  *
  * `hono/html` escapt Interpolationen für HTML und würde das JSON zerstören,
  * deshalb `raw()`. Damit liegt das Escaping hier: `<` wird zu `<`, sonst
- * beendet ein `</script>` in einem Wert aus Tally oder dem Admin das Script vorzeitig.
+ * beendet ein `</script>` in einem Wert aus dem Admin das Script vorzeitig.
  * Das ist die einzige Zeile, die diesen Block sicher macht — nicht entfernen.
  */
 export function jsonLd(data: unknown): Html {
@@ -75,8 +75,7 @@ function localBusiness(origin: string) {
 }
 
 /**
- * Das Angebot zeigt auf die eigene Anmeldeseite, nicht auf tally.so: dort steht
- * dasselbe Formular, aber mit dem Kontext der Seite drumherum.
+ * Das Angebot zeigt auf die Anmeldeseite des Termins.
  */
 function offer(workshop: Workshop, origin: string) {
   return {
@@ -88,24 +87,8 @@ function offer(workshop: Workshop, origin: string) {
       workshop.state === 'soldOut' ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock',
     // Ohne Enddatum wertet Google ein Angebot als unbefristet. Es gilt bis zum
     // Workshop selbst — mit Uhrzeit bis zum Beginn.
-    validThrough: workshop.startTime ? zurichDateTime(workshop.date, workshop.startTime) : workshop.date,
+    validThrough: zurichDateTime(workshop.date, workshop.startTime),
   }
-}
-
-/**
- * Beginn und Ende mit Uhrzeit und Schweizer Zeitzone, sobald sie bekannt sind
- * (D1). Aus Tally bleibt es datumsgenau mit der ungefähren Dauer — dort steht
- * die Uhrzeit nirgends.
- */
-function schedule(workshop: Workshop) {
-  if (workshop.startTime && workshop.endTime) {
-    return {
-      startDate: zurichDateTime(workshop.date, workshop.startTime),
-      endDate: zurichDateTime(workshop.date, workshop.endTime),
-    }
-  }
-
-  return { startDate: workshop.date, duration: WORKSHOP.durationIso }
 }
 
 /** Ein Event pro Workshop. */
@@ -116,12 +99,14 @@ function event(workshop: Workshop, origin: string) {
     name: `Tufting-Workshop in ${BUSINESS.locality}`,
     description:
       'Tagesworkshop: Teppich, Wandbild oder Kissen selbst tuften. Material inklusive, keine Vorkenntnisse nötig.',
-    ...schedule(workshop),
+    // Mit Uhrzeit und Schweizer Zeitzone, damit Google den Beginn richtig zeigt.
+    startDate: zurichDateTime(workshop.date, workshop.startTime),
+    endDate: zurichDateTime(workshop.date, workshop.endTime),
     eventStatus: 'https://schema.org/EventScheduled',
     eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
     image: `${origin}/og-image.png`,
-    maximumAttendeeCapacity: workshop.capacity ?? WORKSHOP.maxAttendees,
-    ...(workshop.freeSpots !== null ? { remainingAttendeeCapacity: workshop.freeSpots } : {}),
+    maximumAttendeeCapacity: workshop.capacity,
+    remainingAttendeeCapacity: workshop.freeSpots,
     // Verweis statt Wiederholung: die Adresse steht einmal im LocalBusiness.
     location: { '@id': `${origin}/#business` },
     organizer: { '@id': `${origin}/#business` },
@@ -132,9 +117,8 @@ function event(workshop: Workshop, origin: string) {
 /**
  * Der Graph der Startseite: das Studio plus ein Event pro anstehendem Workshop.
  *
- * Erwartet bereits gefilterte Workshops — die Prüfung der Formular-ID passiert
- * einmal in `index.ts`, damit `Offer.url` und der Anmelde-Button nie
- * auseinanderlaufen können.
+ * Erwartet dieselben Workshops wie die Cards, damit `Offer.url` und der
+ * Anmelde-Button nie auseinanderlaufen können.
  */
 export function buildGraph(workshops: Workshop[], origin: string): object {
   return {

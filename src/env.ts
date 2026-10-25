@@ -5,7 +5,6 @@
  */
 export interface Env {
   DB: D1Database
-  TALLY_TOKEN: string
   /**
    * Passwort des einzigen Admin-Kontos (`wrangler secret put ADMIN_PASSWORD`).
    * Fehlt es, ist der Admin gesperrt statt offen.
@@ -16,12 +15,6 @@ export interface Env {
    * beendet alle Sessions auf allen Geräten.
    */
   SESSION_SECRET?: string
-  /**
-   * Woher die öffentliche Seite Termine und Anmeldung nimmt: `tally` (bisher)
-   * oder `d1` (eigene Anmeldung). Alles ausser `d1` heisst Tally — so bleibt
-   * ein Tippfehler bei der alten, funktionierenden Seite.
-   */
-  SIGNUP_BACKEND?: string
   /** Öffentlicher Schlüssel des Turnstile-Widgets (Var). */
   TURNSTILE_SITE_KEY?: string
   /** Geheimer Schlüssel für siteverify (`wrangler secret put TURNSTILE_SECRET_KEY`). */
@@ -37,8 +30,4 @@ export interface Env {
   VAPID_PRIVATE_KEY?: string
   /** Kontakt für die Push-Dienste, z.B. `mailto:…` (Var). */
   VAPID_SUBJECT?: string
-}
-
-export function usesDatabase(env: Env): boolean {
-  return env.SIGNUP_BACKEND === 'd1'
 }

@@ -6,9 +6,9 @@ import type { Html } from './layout.ts'
  * Impressum und Datenschutzerklärung.
  *
  * Was sich aus dem Code ergibt, steht hier ausformuliert: Hosting auf
- * Cloudflare Workers, die Anmeldung über Tally oder die eigene Datenbank je
- * nach SIGNUP_BACKEND, Turnstile, die Mitteilung an die Betreiberin — alles
- * Bearbeitungen, die genannt werden müssen. Alles, was nur die Betreiberin
+ * Cloudflare Workers, die Anmeldung in der eigenen Datenbank, Turnstile, die
+ * Mitteilung an die Betreiberin — alles Bearbeitungen, die genannt werden
+ * müssen. Alles, was nur die Betreiberin
  * weiss, steht als sichtbarer Platzhalter da und nicht als erfundener Satz.
  *
  * Das ist eine Vorlage, keine Rechtsberatung. Vor dem Aufschalten prüfen lassen.
@@ -66,34 +66,11 @@ export function renderImprint(): Html {
     </section>`
 }
 
-/** Anmeldung über die eingebetteten Tally-Formulare (SIGNUP_BACKEND=tally). */
-function tallySignup(): Html {
-  return html`<h2 class="section__title">Anmeldung über Tally</h2>
-    <p>
-      Die Anmeldeformulare stammen von Tally (Tally BV, Belgien). Sie stehen auf eigenen
-      Unterseiten: erst wenn du einen Anmelde-Button anklickst und diese Seite öffnest, lädt
-      dein Browser das Formular von <span translate="no">tally.so</span> und stellt dabei eine
-      Verbindung zu diesem Anbieter her. Auf der Startseite und in den Rechtstexten passiert
-      das nicht.
-    </p>
-    <p>
-      Was du im Formular einträgst – die Angaben für deine Kursanmeldung – wird bei Tally
-      gespeichert und dient ausschliesslich der Organisation des Workshops. Grundlage ist die
-      Erfüllung des Vertrags.
-    </p>
-    <p>
-      Die Angaben werden so lange aufbewahrt, wie es dafür nötig ist, und danach gelöscht.
-      Datenschutzerklärung des Anbieters:
-      <a href="https://tally.so/help/privacy-policy" rel="noopener">tally.so/help/privacy-policy</a>.
-    </p>`
-}
-
 /**
- * Eigene Anmeldung (SIGNUP_BACKEND=d1): Datenbank, Mitteilung an die
- * Betreiberin, Spam-Schutz. Was hier steht, ergibt sich aus dem Code —
- * plan.md §9.
+ * Anmeldung: Datenbank, Mitteilung an die Betreiberin, Spam-Schutz. Was hier
+ * steht, ergibt sich aus dem Code — plan.md §9.
  */
-function ownSignup(): Html {
+function signup(): Html {
   return html`<h2 class="section__title">Anmeldung</h2>
     <p>
       Wenn du dich für einen Workshop anmeldest, werden die Angaben für deine Kursanmeldung in
@@ -120,12 +97,7 @@ function ownSignup(): Html {
     </p>`
 }
 
-export interface PrivacyOptions {
-  /** true mit SIGNUP_BACKEND=d1 — die Erklärung beschreibt, was die Seite gerade tut. */
-  ownSignup: boolean
-}
-
-export function renderPrivacy(options: PrivacyOptions): Html {
+export function renderPrivacy(): Html {
   return html`<section class="section">
       <div class="wrap prose prose--narrow">
         <h1 class="page-title">Datenschutzerklärung</h1>
@@ -150,7 +122,7 @@ export function renderPrivacy(options: PrivacyOptions): Html {
           die Übermittlung stützt sich auf die Standardvertragsklauseln.
         </p>
 
-        ${options.ownSignup ? ownSignup() : tallySignup()}
+        ${signup()}
 
         <h2 class="section__title">Kontakt per E-Mail</h2>
         <p>

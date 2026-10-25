@@ -218,9 +218,8 @@ Sorte gibt es nicht — bleibt aber in `--ink-muted`, damit das Datum die Zeile
 ist, die man zuerst liest.
 
 **Der Titel der Card ist das Datum.** Die Workshops haben keinen eigenen Namen;
-der Formularname aus Tally ist ein interner Bezeichner und erscheint nirgends,
-Termine aus dem Admin haben gar keinen. Uhrzeit und Hinweis stehen darunter in
-`--ink-muted`, nur wenn es sie gibt (aus Tally gibt es sie nicht).
+im Admin angelegt bekommen sie nur Datum, Zeit und Plätze. Uhrzeit und der
+optionale Hinweis stehen darunter in `--ink-muted`.
 Das Datum steht als `<time datetime="YYYY-MM-DD">` im `h3` — sichtbar
 `DD.MM.YYYY`, maschinenlesbar ISO. Aus demselben Grund benennt das `aria-label`
 des Buttons das Datum und nicht den Formularnamen: ein Screenreader soll nichts
@@ -296,16 +295,12 @@ Aufbau: `.back`-Link zurück zu den Terminen (`--text-xs`, Pfeil aus dem CSS —
 ein Screenreader liest „Alle Termine", nicht „Pfeil links"), `h1` „Anmeldung",
 darunter Datum und Uhrzeit als `.lead`, dann das Formular.
 
-Zwei Varianten, je nach `SIGNUP_BACKEND`:
-
-- **Tally** (`.embed-wrap`): das iframe ist auf `--measure-text` gedeckelt und
-  rahmenlos; seine Höhe kommt vom Embed (`dynamicHeight`) und wird im CSS nicht
-  angefasst.
-- **Eigenes Formular** (`.form`, siehe unten): Vorname/Nachname nebeneinander,
-  E-Mail, Anzahl Personen als Auswahl bis zu den freien Plätzen, Bemerkung,
-  das Turnstile-Widget, der Button „Verbindlich anmelden“ und darunter ein Satz
-  mit Link auf die Datenschutzerklärung. Danach die Danke-Seite mit Datum und
-  Uhrzeit — ohne Personendaten.
+Das Formular (`.form`, siehe unten): Vorname/Nachname nebeneinander, E-Mail,
+Anzahl Personen als Auswahl bis zu den freien Plätzen, Bemerkung, das
+Turnstile-Widget, der Button „Verbindlich anmelden“ und darunter ein Satz mit
+Link auf die Datenschutzerklärung. Danach die Danke-Seite mit Datum und
+Uhrzeit — ohne Personendaten. Ist der Termin voll, steht statt des Formulars
+der Grund als `.note`.
 
 ### Formular `.form` / `.field`
 
@@ -503,7 +498,7 @@ Zwei Punkte, die man dabei kennen muss:
   weil „Anmelden“ ausserhalb der Card nicht unterscheidbar ist.
 - **Kein Client-JS für Inhalt.** Ohne JavaScript bleibt die Seite vollständig
   lesbar, inklusive Galerie. Script gibt es nur dort, wo die Plattform es
-  verlangt: das Tally-Embed (Variante Tally), das Turnstile-Widget auf der
+  verlangt: das Turnstile-Widget auf der
   eigenen Anmeldeseite und im Admin `admin.js` für Service Worker, Push,
   Kopieren und Teilen. Was ein Script erst freischaltet, steht mit `hidden` im
   HTML und wird nur gezeigt, wo es auch geht.
@@ -549,7 +544,7 @@ Diese Liste existiert, damit „nur dieses eine Mal“ nicht passiert:
 - Animationen ausser dem Farbübergang an Buttons und Punkten und dem
   weichen Scrollen von Seite und Galerie
 - JavaScript für Layout oder Interaktion — Ausnahmen sind nur die in §7
-  genannten (Tally-Embed, Turnstile, `admin.js`); das Carousel kommt ohne aus
+  genannten (Turnstile, `admin.js`); das Carousel kommt ohne aus
 - Icons ohne Textentsprechung
 - klickbare Cards, Hover-Effekte auf ganzen Blöcken — einzige Ausnahme sind
   die Terminzeilen im Admin (§6)
@@ -564,7 +559,6 @@ Diese Liste existiert, damit „nur dieses eine Mal“ nicht passiert:
 |---|---|
 | `DESIGN_GUIDE.md` | dieses Dokument — die Entscheidungen |
 | `public/style.css` | Tokens und Regeln, gliedert sich nach §2–6 |
-| `public/tally.js` | Startet die Embeds der Formularseiten (Höhe per iframe-resizer), nur Variante Tally |
 | `public/admin/admin.js` | Admin: Service Worker registrieren, Push aktivieren, Kopieren, Teilen |
 | `public/admin-sw.js` | Service Worker des Admins: Mitteilungen anzeigen und öffnen |
 | `public/admin/manifest.webmanifest` | Admin als App, mit `icon-180/192/512.png` aus der Wortmarke |
@@ -580,7 +574,7 @@ Diese Liste existiert, damit „nur dieses eine Mal“ nicht passiert:
 | `src/views/intro.ts` | Section „Tufting-Workshops in Bern": Text, Fakten, Preise, Bilder |
 | `src/views/schedule.ts` | Section „Wähle deinen Workshoptag": Grid und Kontakt-Link |
 | `src/views/card.ts` | Card-Markup und Zustandslogik |
-| `src/views/signup.ts` | Anmeldeseite (Tally-Embed oder eigenes Formular), Danke-Seite |
+| `src/views/signup.ts` | Anmeldeseite mit Formular, Danke-Seite |
 | `src/views/fields.ts` | Formularfelder mit Label, Hinweis und Fehlermeldung |
 | `src/views/admin/` | Admin: Layout, Login, Übersicht, Termin, Vorlage, Mitteilungen |
 | `src/views/about.ts` | Section „Ich bin Naira" |
@@ -588,7 +582,7 @@ Diese Liste existiert, damit „nur dieses eine Mal“ nicht passiert:
 
 Die Texte der Seite stehen als Konstanten in den View-Modulen. Es gibt kein CMS
 (plan.md §14), eine Textänderung ist ein Deploy. Ausnahme sind die Termine:
-die kommen zur Request-Zeit aus Tally oder aus der D1, gepflegt im Admin.
+die kommen zur Request-Zeit aus der D1, gepflegt im Admin.
 
 Klassen sind BEM-artig benannt (`.card__title`, `.site-header__logo`). Ausgelesen
 wird der Zustand über `data-state` auf der Card, nicht über eine Zustandsklasse

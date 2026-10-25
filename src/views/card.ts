@@ -42,15 +42,12 @@ function action(workshop: Workshop): Html | string {
  * deshalb h3: h2 gehört dem Sectiontitel, und zwei h2 nebeneinander lesen sich
  * im Screenreader als zwei gleichrangige Bereiche statt als Liste von Terminen.
  *
- * Die ID ist bereits in loadWorkshops() geprüft.
+ * Die ID kommt aus der Datenbank und ist URL-tauglich (db.ts, newId).
  */
 export function renderCard(workshop: Workshop): Html {
   const text = notice(workshop)
-  // Uhrzeit und Hinweis gibt es nur aus der D1; aus Tally fehlen beide.
-  const time = formatTimeRange(workshop)
 
-  // Der Formularname aus Tally ist ein interner Bezeichner und erscheint nicht.
-  // Das Datum ist der Titel der Card.
+  // Workshops haben keinen eigenen Namen — das Datum ist der Titel der Card.
   // "Workshop am" steht im h3, nicht als eigener Absatz davor: die Überschrift
   // liest sich damit als ganzer Satz — "Workshop am 22.08.2026" — statt als
   // nacktes Datum, und die Vorzeile bleibt trotzdem eine eigene Zeile.
@@ -59,7 +56,7 @@ export function renderCard(workshop: Workshop): Html {
         <span class="card__kicker">Workshop am</span>
         <time datetime="${workshop.date}">${formatWorkshopDate(workshop.date)}</time>
       </h3>
-      ${time ? html`<p class="card__meta">${time}</p>` : ''}
+      <p class="card__meta">${formatTimeRange(workshop)}</p>
       ${workshop.note ? html`<p class="card__meta">${workshop.note}</p>` : ''}
       ${text ? html`<p class="card__notice">${text}</p>` : ''}
       ${action(workshop)}

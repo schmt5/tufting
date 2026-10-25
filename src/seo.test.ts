@@ -8,13 +8,12 @@ const ORIGIN = 'https://example.ch'
 function workshop(overrides: Partial<Workshop> = {}): Workshop {
   return {
     id: 'VLa1Rj',
-    name: 'Workshop August',
     date: '2026-08-12',
+    startTime: '10:00',
+    endTime: '17:00',
+    capacity: 4,
     freeSpots: 4,
     state: 'open',
-    startTime: null,
-    endTime: null,
-    capacity: null,
     note: null,
     ...overrides,
   }
@@ -70,14 +69,6 @@ describe('buildGraph', () => {
     assert.equal((sold.offers as Record<string, unknown>).availability, 'https://schema.org/SoldOut')
   })
 
-  it('lässt die Restplätze weg, wenn sie unbekannt sind', () => {
-    const known = node(buildGraph([workshop({ freeSpots: 2, state: 'low' })], ORIGIN), 'Event')
-    const unknown = node(buildGraph([workshop({ freeSpots: null })], ORIGIN), 'Event')
-
-    assert.equal(known.remainingAttendeeCapacity, 2)
-    assert.ok(!('remainingAttendeeCapacity' in unknown))
-  })
-
   it('führt das Angebot auf die eigene Anmeldeseite', () => {
     const event = node(buildGraph([workshop({ id: 'VLa1Rj' })], ORIGIN), 'Event')
 
@@ -97,14 +88,6 @@ describe('buildGraph', () => {
     assert.equal(winter.maximumAttendeeCapacity, 6)
     assert.equal((winter.offers as Record<string, unknown>).validThrough, '2026-11-28T10:00:00+01:00')
     assert.equal(summer.startDate, '2027-06-12T10:00:00+02:00')
-  })
-
-  it('bleibt ohne Uhrzeit datumsgenau mit der ungefähren Dauer', () => {
-    const event = node(buildGraph([workshop()], ORIGIN), 'Event')
-
-    assert.equal(event.startDate, '2026-08-12')
-    assert.equal(event.duration, 'PT7H')
-    assert.ok(!('endDate' in event))
   })
 
   it('ist ohne Workshops immer noch ein gültiger Graph', () => {

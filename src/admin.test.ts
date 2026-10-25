@@ -85,7 +85,6 @@ before(async () => {
   proxy = await testDatabase()
   env = {
     DB: proxy.env.DB,
-    TALLY_TOKEN: '',
     ADMIN_PASSWORD: PASSWORD,
     SESSION_SECRET: 'k'.repeat(40),
     ...(await testVapidKeys()),

@@ -76,7 +76,7 @@ describe('Cron-Handler', () => {
     const old = await withSignup('2000-01-01')
     const pending: Promise<unknown>[] = []
     const ctx = { waitUntil: (task: Promise<unknown>) => pending.push(task), passThroughOnException() {} }
-    const env = { DB: db, TALLY_TOKEN: '' } satisfies Env
+    const env = { DB: db } satisfies Env
 
     const log = console.log
     console.log = () => {}

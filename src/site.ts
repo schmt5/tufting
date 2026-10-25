@@ -59,6 +59,4 @@ export const WORKSHOP = {
   price: 290,
   currency: 'CHF',
   maxAttendees: 4,
-  /** Ungefähre Dauer in Stunden, für `Event.duration` als ISO-8601. */
-  durationIso: 'PT7H',
 }

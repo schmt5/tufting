@@ -5,13 +5,12 @@ import type { Workshop } from './workshops.ts'
 
 const workshop: Workshop = {
   id: 'abc',
-  name: '',
   date: '2026-11-28',
-  freeSpots: 3,
-  state: 'open',
   startTime: '10:00',
   endTime: '17:00',
   capacity: 4,
+  freeSpots: 3,
+  state: 'open',
   note: null,
 }
 

@@ -374,7 +374,7 @@ main:focus {
   background: var(--paper);
 }
 
-/* Der Titel ist das Datum — der Formularname aus Tally erscheint nicht. */
+/* Der Titel ist das Datum — Workshops haben keinen eigenen Namen. */
 .card__title {
   font-size: var(--text-lg);
   font-weight: 600;
@@ -463,21 +463,6 @@ main:focus {
 
 .back a::before {
   content: '← ';
-}
-
-/* Das Formular ist der Inhalt der Seite: eigene Breite, nicht die des
-   Fliesstexts daneben — Tally setzt darin selbst um. */
-.embed-wrap {
-  margin-top: var(--space-8);
-}
-
-.embed {
-  display: block;
-  width: 100%;
-  max-width: var(--measure-text);
-  /* Die Höhe steht als Attribut am iframe und wird von embed.js nachgeführt;
-     hier darf sie deshalb nicht überschrieben werden. */
-  border: 0;
 }
 
 /* --- Kontakt ------------------------------------------------------------- */

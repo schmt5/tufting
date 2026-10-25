@@ -4,7 +4,7 @@ import admin from './admin.ts'
 import { clientIp } from './auth.ts'
 import { cleanup } from './cleanup.ts'
 import { getPublishedWorkshop, getWorkshop, insertSignup, listPublishedWorkshops } from './db.ts'
-import { type Env, usesDatabase } from './env.ts'
+import type { Env } from './env.ts'
 import { field, parseSignupForm, SIGNUP_FIELDS } from './forms.ts'
 import { buildIcs, icsFilename } from './ics.ts'
 import { newSignupMessage, notifyAdmin } from './notify.ts'
@@ -15,10 +15,8 @@ import {
   formatWorkshopDate,
   fromDatabase,
   loadWorkshops,
-  loadWorkshopsFromDatabase,
   todayInZurich,
   type Workshop,
-  type WorkshopsResult,
 } from './workshops.ts'
 import { renderAbout } from './views/about.ts'
 import { renderCard } from './views/card.ts'
@@ -29,7 +27,6 @@ import { layout } from './views/layout.ts'
 import { renderImprint, renderNotFound, renderPrivacy } from './views/legal.ts'
 import { renderSchedule } from './views/schedule.ts'
 import {
-  renderSignup,
   renderSignupForm,
   renderSignupUnavailable,
   renderThanks,
@@ -61,14 +58,9 @@ async function inBackground(c: AppContext, task: Promise<unknown>): Promise<void
   }
 }
 
-/** Termine aus der Quelle, die SIGNUP_BACKEND wählt (plan.md §12). */
-function loadSchedule(env: Env): Promise<WorkshopsResult> {
-  return usesDatabase(env) ? loadWorkshopsFromDatabase(env.DB) : loadWorkshops(env.TALLY_TOKEN)
-}
-
 app.get('/', async (c) => {
   const origin = originOf(c.req.url)
-  const { workshops, failed } = await loadSchedule(c.env)
+  const { workshops, failed } = await loadWorkshops(c.env.DB)
   const cards = workshops.map(renderCard)
 
   // Bewusst immer 200: die Seite soll nie als Fehlerseite erscheinen. Fehlt die
@@ -136,8 +128,7 @@ function signupPage(c: AppContext, workshop: Workshop, content: Html, status: 20
         title: `Anmeldung Workshop ${date} — ${BUSINESS.name}`,
         description: `Anmeldung zum Tufting-Workshop am ${date} in ${BUSINESS.locality}.`,
         canonical: `${originOf(c.req.url)}${signupPath(workshop.id)}`,
-        tally: !usesDatabase(c.env),
-        turnstile: usesDatabase(c.env) && workshop.state !== 'soldOut',
+        turnstile: workshop.state !== 'soldOut',
         // Ein Formular mit Fehlermeldungen ist keine Seite für den Index.
         noindex: status !== 200,
       },
@@ -151,37 +142,25 @@ function signupPage(c: AppContext, workshop: Workshop, content: Html, status: 20
  * Anmeldung zu einem Termin. Eigene Seite statt Popup, weil das Formular länger
  * ist als ein Overlay hoch — Begründung in views/signup.ts.
  *
- * Die ID wird gegen die Termine geprüft, nicht bloss gegen ein Muster: sonst
- * bettete die Tally-Version jedes beliebige fremde Formular ein, und die
- * eigene nähme Anmeldungen für Entwürfe an. Vergangene Termine laufen in
- * beiden Quellen auf die 404.
+ * Die ID wird gegen die Datenbank geprüft: Entwürfe, abgesagte und vergangene
+ * Termine laufen auf die 404, ein Ausfall der D1 auf 503.
  */
 app.get('/anmeldung/:id', async (c) => {
-  if (usesDatabase(c.env)) {
-    const workshop = await databaseWorkshop(c)
-    if (workshop === 'failed') return unavailable(c)
-    if (!workshop) return c.notFound()
-
-    const turnstile = turnstileConfig(c.env)
-    if (!turnstile) {
-      console.error('Turnstile: TURNSTILE_SITE_KEY, TURNSTILE_SECRET_KEY oder TURNSTILE_HOSTNAMES fehlt')
-      return unavailable(c)
-    }
-
-    return signupPage(c, workshop, renderSignupForm(workshop, { siteKey: turnstile.siteKey }))
-  }
-
-  const { workshops, failed } = await loadWorkshops(c.env.TALLY_TOKEN)
-  if (failed) return unavailable(c)
-
-  const workshop = workshops.find((entry) => entry.id === c.req.param('id'))
+  const workshop = await databaseWorkshop(c)
+  if (workshop === 'failed') return unavailable(c)
   if (!workshop) return c.notFound()
 
-  return signupPage(c, workshop, renderSignup(workshop))
+  const turnstile = turnstileConfig(c.env)
+  if (!turnstile) {
+    console.error('Turnstile: TURNSTILE_SITE_KEY, TURNSTILE_SECRET_KEY oder TURNSTILE_HOSTNAMES fehlt')
+    return unavailable(c)
+  }
+
+  return signupPage(c, workshop, renderSignupForm(workshop, { siteKey: turnstile.siteKey }))
 })
 
 /**
- * Anmeldung absenden (nur SIGNUP_BACKEND=d1).
+ * Anmeldung absenden.
  *
  * Reihenfolge: Termin, Formular, Turnstile, dann der Platz-Check in der D1.
  * Turnstile kommt erst nach dem Formular, weil ein Token nur einmal gilt — bei
@@ -192,8 +171,6 @@ app.get('/anmeldung/:id', async (c) => {
  * nichts ein zweites Mal.
  */
 app.post('/anmeldung/:id', async (c) => {
-  if (!usesDatabase(c.env)) return c.notFound()
-
   const workshop = await databaseWorkshop(c)
   if (workshop === 'failed') return unavailable(c)
   if (!workshop) return c.notFound()
@@ -270,8 +247,6 @@ app.post('/anmeldung/:id', async (c) => {
 
 /** Bestätigung nach der Anmeldung. Ohne Personendaten in der Adresse — nur der Termin. */
 app.get('/anmeldung/:id/danke', async (c) => {
-  if (!usesDatabase(c.env)) return c.notFound()
-
   const workshop = await databaseWorkshop(c)
   if (workshop === 'failed') return unavailable(c)
   if (!workshop) return c.notFound()
@@ -310,7 +285,7 @@ app.get('/datenschutz', (c) =>
         description: 'Welche Daten diese Seite bearbeitet, wozu und wie lange.',
         canonical: `${originOf(c.req.url)}/datenschutz`,
       },
-      renderPrivacy({ ownSignup: usesDatabase(c.env) }),
+      renderPrivacy(),
     ),
   ),
 )
@@ -319,8 +294,7 @@ app.get('/datenschutz', (c) =>
  * Kalenderdatei eines Termins, verlinkt in Nairas E-Mail ({kalender} in der
  * Vorlage). Öffentlich, weil sie nur enthält, was auch auf der Seite steht.
  *
- * Unabhängig von SIGNUP_BACKEND: so lässt sich der Link aus dem Admin schon
- * vor der Umstellung prüfen. Entwürfe gibt es hier nicht; abgesagte Termine
+ * Entwürfe gibt es hier nicht; abgesagte Termine
  * schon — als CANCELLED, damit sie auch aus Kalendern verschwinden, die sie
  * bereits haben.
  */
@@ -358,17 +332,12 @@ app.get('/robots.txt', async (c) =>
 )
 
 /**
- * Die festen Seiten, und mit SIGNUP_BACKEND=d1 auch die Anmeldeseiten: dort
- * kostet das eine einzige Abfrage. Aus Tally kommen sie nicht hinein — das
- * hiesse, bei jedem Abruf der Sitemap die Tally-API zu befragen, die bei 100
- * Anfragen pro Minute dichtmacht. Gefunden werden sie dann über die Links auf
- * der Startseite.
+ * Die festen Seiten und die Anmeldeseiten der veröffentlichten Termine — das
+ * kostet eine einzige Abfrage.
  */
 const SITEMAP_PATHS = ['/', '/impressum', '/datenschutz']
 
 async function signupPaths(env: Env): Promise<string[]> {
-  if (!usesDatabase(env)) return []
-
   try {
     const rows = await listPublishedWorkshops(env.DB, todayInZurich())
     return rows.map((row) => signupPath(row.id))
