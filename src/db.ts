@@ -383,3 +383,42 @@ export async function recordLoginFailure(
 export async function clearLoginFailures(db: D1Database, ip: string): Promise<void> {
   await db.prepare('DELETE FROM login_failures WHERE ip = ?1').bind(ip).run()
 }
+
+export interface PushSubscriptionRow {
+  endpoint: string
+  p256dh: string
+  auth: string
+  label: string | null
+  created_at: number
+}
+
+/**
+ * Ein Gerät für Push anmelden. Meldet sich dasselbe Gerät neu an (gleicher
+ * Endpunkt, neue Schlüssel), ersetzt das den alten Eintrag.
+ */
+export async function savePushSubscription(
+  db: D1Database,
+  subscription: { endpoint: string; p256dh: string; auth: string; label: string | null },
+  now: number = nowSeconds(),
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO push_subscriptions (endpoint, p256dh, auth, label, created_at)
+       VALUES (?1, ?2, ?3, ?4, ?5)
+       ON CONFLICT (endpoint) DO UPDATE SET p256dh = ?2, auth = ?3, label = ?4`,
+    )
+    .bind(subscription.endpoint, subscription.p256dh, subscription.auth, subscription.label, now)
+    .run()
+}
+
+export async function listPushSubscriptions(db: D1Database): Promise<PushSubscriptionRow[]> {
+  const { results } = await db
+    .prepare('SELECT * FROM push_subscriptions ORDER BY created_at')
+    .all<PushSubscriptionRow>()
+  return results
+}
+
+export async function deletePushSubscription(db: D1Database, endpoint: string): Promise<boolean> {
+  const result = await db.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?1').bind(endpoint).run()
+  return result.meta.changes === 1
+}

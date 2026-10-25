@@ -45,5 +45,21 @@ export async function resetDatabase(db: D1Database): Promise<void> {
     db.prepare('DELETE FROM signups'),
     db.prepare('DELETE FROM workshops'),
     db.prepare('DELETE FROM login_failures'),
+    db.prepare('DELETE FROM push_subscriptions'),
   ])
+}
+
+/** Ein VAPID-Paar nur für die Tests, im Format der Env-Variablen. */
+export async function testVapidKeys(): Promise<{ VAPID_PUBLIC_KEY: string; VAPID_PRIVATE_KEY: string; VAPID_SUBJECT: string }> {
+  const pair = (await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign'])) as CryptoKeyPair
+  const raw = new Uint8Array((await crypto.subtle.exportKey('raw', pair.publicKey)) as ArrayBuffer)
+  const jwk = (await crypto.subtle.exportKey('jwk', pair.privateKey)) as JsonWebKey
+  return { VAPID_PUBLIC_KEY: Buffer.from(raw).toString('base64url'), VAPID_PRIVATE_KEY: jwk.d ?? '', VAPID_SUBJECT: 'mailto:test@example.com' }
+}
+
+/** Schlüssel eines Geräts, wie sie im Browser aus pushManager.subscribe() kämen. */
+export async function testDeviceKeys(): Promise<{ p256dh: string; auth: string }> {
+  const pair = (await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits'])) as CryptoKeyPair
+  const raw = new Uint8Array((await crypto.subtle.exportKey('raw', pair.publicKey)) as ArrayBuffer)
+  return { p256dh: Buffer.from(raw).toString('base64url'), auth: Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString('base64url') }
 }

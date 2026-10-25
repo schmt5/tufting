@@ -119,8 +119,9 @@ Alle unter `/admin`, alle mit `noindex`, `X-Robots-Tag: noindex` und
 | `POST /admin/anmeldungen/{id}/storniert` | stornieren — gibt die Plätze frei |
 | `POST /admin/anmeldungen/{id}/loeschen` | endgültig löschen |
 | `GET /admin/vorlage`, `POST /admin/vorlage` | E-Mail-Vorlage bearbeiten |
-| `POST /admin/push`, `POST /admin/push/test` | Gerät für Push anmelden, Testmitteilung |
-| `GET /admin/manifest.webmanifest`, `/admin/sw.js`, Icons | PWA, statisch aus `public/admin/` |
+| `GET /admin/mitteilungen` | Gerät für Push anmelden, angemeldete Geräte |
+| `POST /admin/push`, `POST /admin/push/test`, `POST /admin/push/entfernen` | Gerät anmelden (JSON), Testmitteilung, Gerät entfernen |
+| `GET /admin/manifest.webmanifest`, `/admin/admin.js`, Icons, `/admin-sw.js` | PWA, statisch aus `public/` |
 
 Formulare im Admin sind normale `<form method="post">`. HTML kennt nur GET und
 POST, deshalb heissen die Aktionen nach dem, was sie tun, statt PUT/DELETE zu
@@ -284,8 +285,10 @@ Ein einziges Konto, kein Benutzername — nur ein Passwort.
 ### Admin als PWA
 
 - `public/admin/manifest.webmanifest`: Name „Naira Admin“, `start_url` und
-  `scope` `/admin/`, `display: standalone`, Icons 192 und 512 px.
-- `public/admin/sw.js`: nur `push` und `notificationclick`. **Kein Offline-Cache**
+  `scope` `/admin`, `display: standalone`, Icons 192 und 512 px.
+- `public/admin-sw.js`: nur `push` und `notificationclick`. Liegt im
+  Wurzelverzeichnis, weil ein Service Worker unter `/admin/` nur für `/admin/…`
+  gälte — die Übersicht `/admin` selbst läge ausserhalb. **Kein Offline-Cache**
   — die Seiten enthalten Personendaten, die nicht auf dem Gerät liegen bleiben
   sollen, und veraltete Belegungen wären schlimmer als „offline“.
 - Manifest, Service Worker und Icons liegen öffentlich in `./public` — sie
@@ -409,6 +412,7 @@ gibt es nur im Admin.
 │   ├── test-support.ts      # leere lokale D1 mit Migrationen für die Tests
 │   ├── turnstile.ts         # siteverify
 │   ├── push.ts              # VAPID, Verschlüsselung, Versand
+│   ├── notify.ts            # Mitteilung zur Anmeldung, an alle Geräte
 │   ├── ics.ts               # Kalenderdatei
 │   ├── template.ts          # Platzhalter ersetzen, mailto-Link bauen
 │   ├── site.ts              # Stammdaten (unverändert)
@@ -422,11 +426,11 @@ gibt es nur im Admin.
 │       └── admin/           # Layout, Login, Übersicht, Termin, Vorlage
 ├── public/
 │   ├── style.css            # Tokens und Regeln, Admin nutzt dieselben
+│   ├── admin-sw.js          # Service Worker: push + notificationclick
 │   ├── admin/
 │   │   ├── manifest.webmanifest
-│   │   ├── sw.js            # push + notificationclick
-│   │   ├── admin.js         # Push aktivieren, Text kopieren, Teilen
-│   │   └── icon-192.png, icon-512.png
+│   │   ├── admin.js         # Service Worker registrieren, Push aktivieren
+│   │   └── icon-180.png, icon-192.png, icon-512.png  # vorerst aus dem Favicon
 │   ├── fonts/, img/, favicon.svg, og-image.png
 ├── wrangler.jsonc
 ├── tsconfig.json
@@ -537,6 +541,16 @@ die Zieldomain anlegen, `TURNSTILE_SITE_KEY` und `TURNSTILE_HOSTNAMES` setzen,
 voller Termin nimmt keine weitere an.
 
 ### Phase 4 — Push (3–4h)
+
+Stand: umgesetzt, ohne Bibliothek. Die Verschlüsselung ergibt Byte für Byte den
+Testvektor aus RFC 8291, die VAPID-Signatur lässt sich mit dem öffentlichen
+Schlüssel prüfen. Mitteilungs-Seite, Geräteliste, Testmitteilung, Aufräumen
+abgemeldeter Geräte und die Mitteilung nach jeder Anmeldung über die Webseite
+sind getestet (`push.test.ts`, `notify.test.ts`, `admin.test.ts`,
+`signup.test.ts`). VAPID-Schlüssel: lokal ein eigenes Paar in `.dev.vars`, für
+Produktion der öffentliche in `wrangler.jsonc`, der private als Secret. Offen:
+die echte Zustellung auf ein Gerät — der eingebaute Browser sperrt
+Mitteilungen. Prüfen nach dem Deploy auf Nairas iPhone.
 
 - VAPID-Schlüssel erzeugen, `push.ts`, Service Worker, Manifest und Icons
 - „Mitteilungen aktivieren“, Testmitteilung, Aufräumen abgelaufener Geräte

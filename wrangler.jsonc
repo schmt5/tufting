@@ -18,7 +18,11 @@
     // Sitekey des Turnstile-Widgets und die Domain der Seite — gesetzt, sobald
     // das Widget für die Zieldomain angelegt ist. Nie localhost.
     "TURNSTILE_SITE_KEY": "",
-    "TURNSTILE_HOSTNAMES": ""
+    "TURNSTILE_HOSTNAMES": "",
+    // Öffentlicher Teil des VAPID-Paars für Web Push; der private liegt als
+    // Secret VAPID_PRIVATE_KEY. Neue Schlüssel heissen: alle Geräte neu anmelden.
+    "VAPID_PUBLIC_KEY": "BK_X2bPonW4fPM0b-8pzDTq3fdcVgoTSfw72CkyRSv22LD7fNT8u9rgcFrYByM4180akU9uyStL4jxkVUw1q0Xk",
+    "VAPID_SUBJECT": "mailto:tuftingstudio.bern@outlook.com"
   },
   // Termine und Anmeldungen. Angelegt mit `--jurisdiction eu`: die Daten
   // liegen und werden verarbeitet nur in der EU. Lokal liegt die Datenbank

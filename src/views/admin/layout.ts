@@ -29,6 +29,10 @@ export function adminLayout(options: AdminLayoutOptions, content: Html | string)
         <title>${options.title} — Admin ${BUSINESS.name}</title>
         <meta name="theme-color" content="#ffffff" />
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <!-- Als App installierbar (Home-Bildschirm), mit eigenem Namen und Icon. -->
+        <link rel="manifest" href="/admin/manifest.webmanifest" />
+        <link rel="apple-touch-icon" href="/admin/icon-180.png" />
+        <meta name="apple-mobile-web-app-title" content="Naira Admin" />
         <link rel="preload" href="/fonts/inter-latin-var.woff2" as="font" type="font/woff2" crossorigin />
         <link rel="stylesheet" href="/style.css" />
       </head>
@@ -43,6 +47,7 @@ export function adminLayout(options: AdminLayoutOptions, content: Html | string)
                   <ul class="nav" role="list">
                     <li><a class="nav__link" href="/admin">Termine</a></li>
                     <li><a class="nav__link" href="/admin/workshops/neu">Neuer Termin</a></li>
+                    <li><a class="nav__link" href="/admin/mitteilungen">Mitteilungen</a></li>
                     <li>
                       <form method="post" action="/admin/logout">
                         <button class="nav__link nav__button" type="submit">Abmelden</button>
@@ -59,6 +64,9 @@ export function adminLayout(options: AdminLayoutOptions, content: Html | string)
             ${options.flash ? html`<p class="flash">${options.flash}</p>` : ''} ${content}
           </div>
         </main>
+
+        <!-- Service Worker und Push. Die Seiten funktionieren auch ohne. -->
+        <script type="module" src="/admin/admin.js"></script>
       </body>
     </html>`
 }

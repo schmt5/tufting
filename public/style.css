@@ -89,6 +89,13 @@ ul {
   list-style: none;
 }
 
+/* `hidden` heisst versteckt, auch wenn eine Klasse `display` setzt — sonst
+   zeigte z.B. `.button` (inline-flex) einen Knopf, den das Script erst
+   freigeben will. */
+[hidden] {
+  display: none !important;
+}
+
 /* --- Basis --------------------------------------------------------------- */
 
 html {
@@ -826,6 +833,10 @@ textarea.field__control {
   .admin-row:hover .admin-row__link {
     text-decoration: underline;
   }
+}
+
+.admin-row__title {
+  font-weight: 600;
 }
 
 .admin-row__meta {

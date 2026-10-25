@@ -6,10 +6,18 @@
 import assert from 'node:assert/strict'
 import { after, afterEach, before, beforeEach, describe, it, mock } from 'node:test'
 import type { PlatformProxy } from 'wrangler'
-import { createWorkshop, getWorkshop, insertSignup, listSignups, type WorkshopInput } from './db.ts'
+import {
+  createWorkshop,
+  getWorkshop,
+  insertSignup,
+  listPushSubscriptions,
+  listSignups,
+  savePushSubscription,
+  type WorkshopInput,
+} from './db.ts'
 import type { Env } from './env.ts'
 import app from './index.ts'
-import { resetDatabase, testDatabase } from './test-support.ts'
+import { resetDatabase, testDatabase, testDeviceKeys, testVapidKeys } from './test-support.ts'
 
 const DATE = '2099-01-10'
 const HOST = 'localhost'
@@ -71,6 +79,7 @@ before(async () => {
     TURNSTILE_SITE_KEY: 'sitekey-test',
     TURNSTILE_SECRET_KEY: 'secret-test',
     TURNSTILE_HOSTNAMES: HOST,
+    ...(await testVapidKeys()),
   }
 })
 
@@ -241,6 +250,43 @@ describe('Anmeldung absenden', () => {
     siteverify(PASSES)
 
     assert.equal((await post(`/anmeldung/${id}`, signupForm())).status, 409)
+  })
+})
+
+describe('Mitteilung an Naira', () => {
+  /** siteverify besteht, Push-Dienste antworten mit `pushStatus`. */
+  function services(pushStatus: number) {
+    return mock.method(globalThis, 'fetch', async (url: string) =>
+      url.startsWith('https://challenges.cloudflare.com/')
+        ? new Response(JSON.stringify(PASSES))
+        : new Response(null, { status: pushStatus }),
+    )
+  }
+
+  it('geht nach einer Anmeldung an jedes angemeldete Gerät', async () => {
+    const id = await createWorkshop(env.DB, workshopInput({ capacity: 4 }))
+    await savePushSubscription(env.DB, { endpoint: 'https://web.push.apple.com/naira', ...(await testDeviceKeys()), label: 'iPhone' })
+    const fetchMock = services(201)
+
+    const res = await post(`/anmeldung/${id}`, signupForm({ persons: '3' }))
+    assert.equal(res.status, 303)
+
+    const pushCall = fetchMock.mock.calls.find((call) => call.arguments[0] === 'https://web.push.apple.com/naira')
+    assert.ok(pushCall, 'keine Mitteilung verschickt')
+    const headers = (pushCall.arguments[1] as RequestInit).headers as Record<string, string>
+    assert.match(headers.Authorization ?? '', /^vapid t=/)
+  })
+
+  it('kostet keine Anmeldung, wenn der Push-Dienst ausfällt', async () => {
+    const id = await createWorkshop(env.DB, workshopInput())
+    await savePushSubscription(env.DB, { endpoint: 'https://web.push.apple.com/naira', ...(await testDeviceKeys()), label: null })
+    services(500)
+    mock.method(console, 'error', () => {})
+
+    assert.equal((await post(`/anmeldung/${id}`, signupForm())).status, 303)
+    assert.equal((await listSignups(env.DB, id)).length, 1)
+    // Ein vorübergehender Fehler löscht das Gerät nicht.
+    assert.equal((await listPushSubscriptions(env.DB)).length, 1)
   })
 })
 

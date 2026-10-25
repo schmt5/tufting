@@ -21,3 +21,10 @@ SIGNUP_BACKEND=d1
 TURNSTILE_SITE_KEY=1x00000000000000000000AA
 TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
 TURNSTILE_HOSTNAMES=example.com
+
+# Web Push lokal: ein eigenes VAPID-Paar, nicht das von Produktion. Erzeugen
+# z.B. mit WebCrypto (ECDSA P-256): öffentlich roh als base64url, privat das
+# `d` der JWK als base64url.
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=mailto:tuftingstudio.bern@outlook.com
