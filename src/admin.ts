@@ -28,7 +28,9 @@ import {
   createWorkshop,
   deletePushSubscription,
   deleteSignup,
+  deleteTemplate,
   getSignup,
+  getTemplate,
   getWorkshop,
   insertAdminSignup,
   listPastWorkshops,
@@ -39,10 +41,12 @@ import {
   nowSeconds,
   recordLoginFailure,
   savePushSubscription,
+  saveTemplate,
   updateWorkshop,
   type WorkshopWithSeats,
 } from './db.ts'
 import type { Env } from './env.ts'
+import { icsFilename } from './ics.ts'
 import { notifyAdmin } from './notify.ts'
 import { isPlausibleSubscription, vapidConfig } from './push.ts'
 import {
@@ -50,16 +54,32 @@ import {
   type FieldErrors,
   MAX_CAPACITY,
   parseSignupForm,
+  parseTemplateForm,
   parseWorkshopForm,
   WORKSHOP_FIELDS,
 } from './forms.ts'
+import { originOf } from './seo.ts'
 import { WORKSHOP } from './site.ts'
+import {
+  calendarPath,
+  CONFIRMATION,
+  DEFAULT_TEMPLATE,
+  signupMail,
+  type Template,
+  unknownPlaceholders,
+} from './template.ts'
 import { weekdayDate } from './views/admin/format.ts'
 import { adminLayout } from './views/admin/layout.ts'
 import { renderNotifications } from './views/admin/notifications.ts'
+import { renderTemplateForm } from './views/admin/template.ts'
 import { renderLogin, renderNotConfigured } from './views/admin/login.ts'
 import { renderOverview, workshopPath } from './views/admin/overview.ts'
-import { type ManualSignupOptions, renderWorkshop, renderWorkshopForm } from './views/admin/workshop.ts'
+import {
+  type MailContext,
+  type ManualSignupOptions,
+  renderWorkshop,
+  renderWorkshopForm,
+} from './views/admin/workshop.ts'
 import type { Html } from './views/layout.ts'
 import { todayInZurich } from './workshops.ts'
 
@@ -86,6 +106,8 @@ const FLASH: Record<string, string> = {
   'test-fehler': 'Die Testmitteilung kam nicht an. Die Ursache steht in den Logs.',
   'test-keine': 'Kein Gerät angemeldet.',
   'geraet-entfernt': 'Gerät entfernt.',
+  'vorlage-gespeichert': 'Vorlage gespeichert.',
+  'vorlage-zurueckgesetzt': 'Der Standardtext gilt wieder.',
 }
 
 function flash(c: AdminContext): string | null {
@@ -208,9 +230,22 @@ admin.post('/workshops', async (c) => {
   return c.redirect(`${workshopPath(id)}?meldung=angelegt`, 303)
 })
 
+/** Die eigene Fassung der Vorlage, sonst der Standardtext. */
+async function currentTemplate(db: D1Database): Promise<Template> {
+  return (await getTemplate(db, CONFIRMATION)) ?? DEFAULT_TEMPLATE
+}
+
 async function showWorkshop(c: AdminContext, workshop: WorkshopWithSeats, manual: ManualSignupOptions = {}, status: 200 | 409 | 422 = 200) {
-  const signups = await listSignups(c.env.DB, workshop.id)
-  return page(c, `Termin ${weekdayDate(workshop.date)}`, renderWorkshop(workshop, signups, manual), status)
+  const [signups, template] = await Promise.all([listSignups(c.env.DB, workshop.id), currentTemplate(c.env.DB)])
+  const origin = originOf(c.req.url)
+
+  const context: MailContext = {
+    mails: new Map(signups.map((signup) => [signup.id, signupMail(template, workshop, signup, origin)])),
+    calendarUrl: `${origin}${calendarPath(workshop.id)}`,
+    calendarFilename: icsFilename(workshop.date),
+  }
+
+  return page(c, `Termin ${weekdayDate(workshop.date)}`, renderWorkshop(workshop, signups, context, manual), status)
 }
 
 admin.get('/workshops/:id', async (c) => {
@@ -298,6 +333,46 @@ admin.post('/anmeldungen/:id/:action', async (c) => {
 
   const anchor = action.anchor ? `#anmeldung-${signup.id}` : '#anmeldungen'
   return c.redirect(`${workshopPath(signup.workshop_id)}?meldung=${action.flash}${anchor}`, 303)
+})
+
+/** Beispielwerte für die Vorschau der Vorlage. */
+const PREVIEW = {
+  workshop: { id: 'beispiel', date: '2026-11-28', start_time: '10:00', end_time: '17:00' },
+  signup: { first_name: 'Mia', last_name: 'Beispiel', email: 'mia@example.com', persons: 2 },
+}
+
+function templatePage(
+  c: AdminContext,
+  values: Template,
+  options: { isDefault: boolean; errors?: FieldErrors },
+  status: 200 | 422 = 200,
+) {
+  const preview = signupMail(values, PREVIEW.workshop, PREVIEW.signup, originOf(c.req.url))
+  const unknown = unknownPlaceholders(`${values.subject}\n${values.body}`)
+
+  return page(c, 'E-Mail-Vorlage', renderTemplateForm({ values, preview, unknown, ...options }), status)
+}
+
+admin.get('/vorlage', async (c) => {
+  const saved = await getTemplate(c.env.DB, CONFIRMATION)
+  return templatePage(c, saved ?? DEFAULT_TEMPLATE, { isDefault: !saved })
+})
+
+admin.post('/vorlage', async (c) => {
+  const result = parseTemplateForm(await c.req.parseBody())
+
+  if (!result.ok) {
+    const values = { subject: result.values.subject ?? '', body: result.values.body ?? '' }
+    return templatePage(c, values, { isDefault: false, errors: result.errors }, 422)
+  }
+
+  await saveTemplate(c.env.DB, CONFIRMATION, result.value)
+  return c.redirect('/admin/vorlage?meldung=vorlage-gespeichert', 303)
+})
+
+admin.post('/vorlage/zuruecksetzen', async (c) => {
+  await deleteTemplate(c.env.DB, CONFIRMATION)
+  return c.redirect('/admin/vorlage?meldung=vorlage-zurueckgesetzt', 303)
 })
 
 admin.get('/mitteilungen', async (c) => {

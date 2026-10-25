@@ -47,6 +47,7 @@ export function adminLayout(options: AdminLayoutOptions, content: Html | string)
                   <ul class="nav" role="list">
                     <li><a class="nav__link" href="/admin">Termine</a></li>
                     <li><a class="nav__link" href="/admin/workshops/neu">Neuer Termin</a></li>
+                    <li><a class="nav__link" href="/admin/vorlage">Vorlage</a></li>
                     <li><a class="nav__link" href="/admin/mitteilungen">Mitteilungen</a></li>
                     <li>
                       <form method="post" action="/admin/logout">

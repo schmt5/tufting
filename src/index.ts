@@ -2,9 +2,10 @@ import { type Context, Hono } from 'hono'
 import { html } from 'hono/html'
 import admin from './admin.ts'
 import { clientIp } from './auth.ts'
-import { getPublishedWorkshop, insertSignup, listPublishedWorkshops } from './db.ts'
+import { getPublishedWorkshop, getWorkshop, insertSignup, listPublishedWorkshops } from './db.ts'
 import { type Env, usesDatabase } from './env.ts'
 import { field, parseSignupForm, SIGNUP_FIELDS } from './forms.ts'
+import { buildIcs, icsFilename } from './ics.ts'
 import { newSignupMessage, notifyAdmin } from './notify.ts'
 import { buildGraph, jsonLd, originOf } from './seo.ts'
 import { BUSINESS, CONTACT_FORM_ID, CONTACT_PATH } from './site.ts'
@@ -333,6 +334,39 @@ app.get('/datenschutz', (c) =>
     ),
   ),
 )
+
+/**
+ * Kalenderdatei eines Termins, verlinkt in Nairas E-Mail ({kalender} in der
+ * Vorlage). Öffentlich, weil sie nur enthält, was auch auf der Seite steht.
+ *
+ * Unabhängig von SIGNUP_BACKEND: so lässt sich der Link aus dem Admin schon
+ * vor der Umstellung prüfen. Entwürfe gibt es hier nicht; abgesagte Termine
+ * schon — als CANCELLED, damit sie auch aus Kalendern verschwinden, die sie
+ * bereits haben.
+ */
+app.get('/termin/:file', async (c) => {
+  const id = /^([a-z0-9]+)\.ics$/.exec(c.req.param('file'))?.[1]
+  if (!id) return c.notFound()
+
+  let workshop
+  try {
+    workshop = await getWorkshop(c.env.DB, id)
+  } catch (error) {
+    console.error('D1: Termin für die Kalenderdatei nicht ladbar', error)
+    return c.text('Der Termin kann momentan nicht geladen werden.', 503)
+  }
+  if (!workshop || workshop.status === 'draft') return c.notFound()
+
+  const origin = originOf(c.req.url)
+
+  return c.body(buildIcs(workshop, origin, `${origin}${signupPath(workshop.id)}`), 200, {
+    'Content-Type': 'text/calendar; charset=utf-8',
+    // inline: auf dem Handy öffnet ein Tipp direkt „Zum Kalender hinzufügen“.
+    'Content-Disposition': `inline; filename="${icsFilename(workshop.date)}"`,
+    // Kurz, damit eine Änderung des Termins bald ankommt.
+    'Cache-Control': 'public, max-age=300',
+  })
+})
 
 /**
  * robots.txt und sitemap.xml kommen aus dem Worker statt aus ./public, weil

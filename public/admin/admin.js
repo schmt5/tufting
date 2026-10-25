@@ -1,7 +1,8 @@
 /**
- * Script des Admins: registriert den Service Worker und meldet auf der Seite
- * „Mitteilungen“ das Gerät für Push an. Alles andere im Admin funktioniert
- * ohne JavaScript.
+ * Script des Admins: registriert den Service Worker, meldet auf der Seite
+ * „Mitteilungen“ das Gerät für Push an und bietet bei den Anmeldungen
+ * „Text kopieren“ und „Kalenderdatei teilen“ an. Alles andere im Admin
+ * funktioniert ohne JavaScript.
  */
 
 const SERVICE_WORKER = '/admin-sw.js'
@@ -15,6 +16,64 @@ if ('serviceWorker' in navigator) {
 
 const root = document.querySelector('[data-push]')
 if (root) setupPush(root)
+
+for (const button of document.querySelectorAll('[data-copy]')) setupCopy(button)
+for (const button of document.querySelectorAll('[data-share-ics]')) setupShare(button)
+
+/** Kurze Rückmeldung auf dem Button selbst, danach wieder der alte Text. */
+function flashButton(button, text) {
+  const original = button.textContent
+  button.textContent = text
+  setTimeout(() => {
+    button.textContent = original
+  }, 2000)
+}
+
+/**
+ * „Text kopieren“: für Mail-Apps, die mit einem langen mailto-Link nicht
+ * zurechtkommen. Nur sichtbar, wo es die Zwischenablage gibt.
+ */
+function setupCopy(button) {
+  if (!navigator.clipboard?.writeText) return
+  button.hidden = false
+
+  button.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(button.dataset.copy)
+      flashButton(button, 'Kopiert')
+    } catch (error) {
+      console.error('Kopieren fehlgeschlagen', error)
+      flashButton(button, 'Ging nicht')
+    }
+  })
+}
+
+/**
+ * „Kalenderdatei teilen“: hängt die .ics-Datei über das Teilen-Menü an eine
+ * Mail oder Nachricht. Nur sichtbar, wo der Browser Dateien teilen kann
+ * (Handy, Safari) — am Desktop reicht der Link in der Mail.
+ */
+function setupShare(button) {
+  const probe = new File([''], 'probe.ics', { type: 'text/calendar' })
+  if (!navigator.canShare?.({ files: [probe] })) return
+  button.hidden = false
+
+  button.addEventListener('click', async () => {
+    try {
+      const response = await fetch(button.dataset.shareIcs)
+      if (!response.ok) throw new Error(`Kalenderdatei: ${response.status}`)
+
+      const file = new File([await response.blob()], button.dataset.shareName, { type: 'text/calendar' })
+      await navigator.share({ files: [file], title: button.dataset.shareTitle })
+    } catch (error) {
+      // Abbrechen im Teilen-Menü ist kein Fehler.
+      if (error?.name !== 'AbortError') {
+        console.error('Teilen fehlgeschlagen', error)
+        flashButton(button, 'Ging nicht')
+      }
+    }
+  })
+}
 
 function base64urlToBytes(value) {
   const base64 = value.replaceAll('-', '+').replaceAll('_', '/')

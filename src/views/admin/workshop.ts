@@ -1,6 +1,7 @@
 import { html } from 'hono/html'
 import type { SignupRow, WorkshopWithSeats } from '../../db.ts'
 import { type FieldErrors, MAX_CAPACITY, MAX_COMMENT_LENGTH, MAX_NOTE_LENGTH } from '../../forms.ts'
+import type { SignupMail } from '../../template.ts'
 import { checkbox, input, radios, textarea } from '../fields.ts'
 import type { Html } from '../layout.ts'
 import { persons, STATUS_LABELS, timeRange, timestamp, weekdayDate } from './format.ts'
@@ -125,7 +126,50 @@ function state(signup: SignupRow): Html {
   return html`<span class="tag tag--strong">Neu</span>`
 }
 
-function signupItem(signup: SignupRow): Html {
+/** Was Naira braucht, um der Person zu schreiben: ausgefüllte Vorlage und Kalenderdatei. */
+export interface MailContext {
+  mails: Map<string, SignupMail>
+  calendarUrl: string
+  calendarFilename: string
+}
+
+/**
+ * Schreiben: der mailto-Link funktioniert überall. Kopieren und Teilen
+ * brauchen JavaScript und eine passende Schnittstelle im Browser — deshalb
+ * stehen sie versteckt im HTML, und /admin/admin.js zeigt sie nur, wo sie
+ * auch gehen.
+ *
+ * Teilen hängt die Kalenderdatei als Datei an. Einen Empfänger kann die
+ * Teilen-Funktion nicht setzen; den wählt Naira in der Mail-App selbst.
+ */
+function mailActions(signup: SignupRow, context: MailContext): Html {
+  const mail = context.mails.get(signup.id)
+  if (!mail) return html``
+
+  return html`<a class="button button--small" href="${mail.mailto}">E-Mail schreiben</a>
+    <button
+      class="button button--small button--secondary"
+      type="button"
+      data-copy="${mail.subject}
+
+${mail.body}"
+      hidden
+    >
+      Text kopieren
+    </button>
+    <button
+      class="button button--small button--secondary"
+      type="button"
+      data-share-ics="${context.calendarUrl}"
+      data-share-name="${context.calendarFilename}"
+      data-share-title="${mail.subject}"
+      hidden
+    >
+      Kalenderdatei teilen
+    </button>`
+}
+
+function signupItem(signup: SignupRow, context: MailContext): Html {
   const active = !signup.cancelled_at
 
   return html`<li class="signup" id="anmeldung-${signup.id}">
@@ -141,8 +185,9 @@ function signupItem(signup: SignupRow): Html {
         ${signup.source === 'admin' ? 'Von Hand erfasst' : 'Angemeldet'} ${timestamp(signup.created_at)}
       </p>
       <div class="actions">
+        ${active ? mailActions(signup, context) : ''}
         ${active && !signup.contacted_at
-          ? action(signupPath(signup.id, 'kontaktiert'), 'Als geschrieben markieren', '')
+          ? action(signupPath(signup.id, 'kontaktiert'), 'Als geschrieben markieren')
           : ''}
         ${active ? action(signupPath(signup.id, 'storniert'), 'Stornieren') : ''} ${deleteAction(signup)}
       </div>
@@ -201,6 +246,7 @@ function manualSignupForm(workshop: WorkshopWithSeats, options: ManualSignupOpti
 export function renderWorkshop(
   workshop: WorkshopWithSeats,
   signups: SignupRow[],
+  context: MailContext,
   manual: ManualSignupOptions = {},
 ): Html {
   const active = signups.filter((signup) => !signup.cancelled_at)
@@ -227,7 +273,7 @@ export function renderWorkshop(
       <h2 class="section__title" id="anmeldungen">Anmeldungen</h2>
       ${active.length > 0
         ? html`<ul class="admin-signups" role="list">
-            ${active.map(signupItem)}
+            ${active.map((signup) => signupItem(signup, context))}
           </ul>`
         : html`<p class="note">Noch keine Anmeldungen.</p>`}
       ${manualSignupForm(workshop, manual)}
@@ -237,7 +283,7 @@ export function renderWorkshop(
       ? html`<section class="admin-section" aria-labelledby="storniert">
           <h2 class="section__title" id="storniert">Storniert</h2>
           <ul class="admin-signups" role="list">
-            ${cancelled.map(signupItem)}
+            ${cancelled.map((signup) => signupItem(signup, context))}
           </ul>
         </section>`
       : ''}`

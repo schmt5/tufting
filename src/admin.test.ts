@@ -413,3 +413,63 @@ describe('Mitteilungen', () => {
     }
   })
 })
+
+describe('E-Mail-Vorlage', () => {
+  it('zeigt zuerst den Standardtext mit Vorschau', async () => {
+    const text = await (await request('/admin/vorlage', { cookie: await login() })).text()
+
+    assert.match(text, /Noch der Standardtext/)
+    assert.match(text, /Hallo Mia/)
+    assert.doesNotMatch(text, /Standardtext wiederherstellen/)
+  })
+
+  it('speichert die eigene Fassung und warnt vor unbekannten Platzhaltern', async () => {
+    const cookie = await login()
+    const res = await request('/admin/vorlage', {
+      form: { subject: 'Workshop am {datum}', body: 'Hoi {vorname}, {vornahme}' },
+      cookie,
+    })
+    assert.equal(res.status, 303)
+
+    const text = await (await request('/admin/vorlage', { cookie })).text()
+    assert.match(text, /Hoi Mia, \{vornahme\}/)
+    assert.match(text, /Diese Platzhalter gibt es nicht/)
+    assert.match(text, /Standardtext wiederherstellen/)
+  })
+
+  it('verlangt Betreff und Text', async () => {
+    const res = await request('/admin/vorlage', { form: { subject: '', body: '  ' }, cookie: await login() })
+    const text = await res.text()
+
+    assert.equal(res.status, 422)
+    assert.match(text, /Bitte einen Betreff angeben/)
+    assert.match(text, /Bitte einen Text angeben/)
+  })
+
+  it('stellt den Standardtext wieder her', async () => {
+    const cookie = await login()
+    await request('/admin/vorlage', { form: { subject: 'Eigen', body: 'Eigen' }, cookie })
+    await request('/admin/vorlage/zuruecksetzen', { form: {}, cookie })
+
+    assert.match(await (await request('/admin/vorlage', { cookie })).text(), /Noch der Standardtext/)
+  })
+
+  it('füllt die Vorlage pro Anmeldung in den mailto-Link', async () => {
+    const cookie = await login()
+    const id = await createWorkshop(env.DB, workshopInput(4))
+    await request('/admin/vorlage', { form: { subject: 'Workshop am {datum}', body: 'Hoi {vorname}\n{kalender}' }, cookie })
+    await request('/admin/anmeldungen', { form: signupForm(id, { first_name: 'Mia', email: 'mia@example.com' }), cookie })
+
+    const text = await (await request(`/admin/workshops/${id}`, { cookie })).text()
+    const href = /href="(mailto:[^"]+)"[^>]*>E-Mail schreiben/.exec(text)?.[1]?.replaceAll('&amp;', '&')
+    assert.ok(href, 'kein E-Mail-Link')
+
+    const link = new URL(href)
+    assert.equal(decodeURIComponent(link.pathname), 'mia@example.com')
+    assert.equal(link.searchParams.get('subject'), 'Workshop am 10.01.2099')
+    assert.equal(link.searchParams.get('body'), `Hoi Mia\r\nhttp://localhost/termin/${id}.ics`)
+
+    assert.match(text, /data-copy="Workshop am 10\.01\.2099/)
+    assert.match(text, new RegExp(`data-share-ics="http://localhost/termin/${id}\\.ics"`))
+  })
+})

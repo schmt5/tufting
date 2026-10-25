@@ -422,3 +422,28 @@ export async function deletePushSubscription(db: D1Database, endpoint: string): 
   const result = await db.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?1').bind(endpoint).run()
   return result.meta.changes === 1
 }
+
+/** Die gespeicherte Fassung einer Vorlage, oder null für den Standardtext. */
+export async function getTemplate(db: D1Database, key: string): Promise<{ subject: string; body: string } | null> {
+  return db.prepare('SELECT subject, body FROM templates WHERE key = ?1').bind(key).first<{ subject: string; body: string }>()
+}
+
+export async function saveTemplate(
+  db: D1Database,
+  key: string,
+  template: { subject: string; body: string },
+  now: number = nowSeconds(),
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO templates (key, subject, body, updated_at) VALUES (?1, ?2, ?3, ?4)
+       ON CONFLICT (key) DO UPDATE SET subject = ?2, body = ?3, updated_at = ?4`,
+    )
+    .bind(key, template.subject, template.body, now)
+    .run()
+}
+
+/** Zurück zum Standardtext: die gespeicherte Fassung löschen. */
+export async function deleteTemplate(db: D1Database, key: string): Promise<void> {
+  await db.prepare('DELETE FROM templates WHERE key = ?1').bind(key).run()
+}

@@ -338,7 +338,7 @@ Platzhaltern:
 | `{adresse}` | aus `site.ts` |
 | `{kalender}` | absolute URL auf `/termin/{id}.ics` |
 
-Ein Standardtext steht im Code und wird beim ersten Aufruf angelegt.
+Ein Standardtext steht im Code und gilt, bis Naira eine eigene Fassung speichert.
 Unbekannte Platzhalter bleiben sichtbar stehen statt still zu verschwinden.
 
 Pro Anmeldung im Admin:
@@ -559,6 +559,18 @@ Mitteilungen. Prüfen nach dem Deploy auf Nairas iPhone.
 einer Anmeldung die Mitteilung an, und ein Tipp öffnet den Termin.
 
 ### Phase 5 — Vorlage und Kalenderdatei (2–3h)
+
+Stand: umgesetzt. Vorlage unter `/admin/vorlage` mit Platzhaltern, Vorschau,
+Warnung bei unbekannten Platzhaltern und „Standardtext wiederherstellen“. Ohne
+eigene Fassung gilt der Standardtext aus `template.ts` — angelegt wird erst
+beim Speichern. Pro Anmeldung: „E-Mail schreiben“ (mailto mit ausgefüllter
+Vorlage), „Text kopieren“, „Kalenderdatei teilen“ (nur wo der Browser Dateien
+teilen kann, also auf dem Handy). Kalenderdatei unter `/termin/{id}.ics`,
+abgesagte Termine als CANCELLED. Tests in `ics.test.ts`, `template.test.ts`,
+`admin.test.ts`, `signup.test.ts`. Nicht geprüft: Kopieren und Teilen auf
+einem echten Gerät (der eingebaute Browser sperrt die Zwischenablage), der
+Import der Datei in iPhone- und Google-Kalender. Die Beschreibung der
+Kalenderdatei bekommt „was mitbringen“, sobald der Text von Naira da ist.
 
 - `templates`, Vorlage im Admin, `mailto:`-Link, Text kopieren
 - `ics.ts` mit Tests, Route `/termin/{id}.ics`, Teilen-Button

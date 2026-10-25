@@ -46,6 +46,7 @@ export async function resetDatabase(db: D1Database): Promise<void> {
     db.prepare('DELETE FROM workshops'),
     db.prepare('DELETE FROM login_failures'),
     db.prepare('DELETE FROM push_subscriptions'),
+    db.prepare('DELETE FROM templates'),
   ])
 }
 

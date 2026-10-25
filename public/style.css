@@ -980,6 +980,26 @@ textarea.field__control {
   font-size: var(--text-xs);
 }
 
+/* Vorlage: Liste der Platzhalter und Vorschau der Mail. */
+.placeholders > li + li {
+  margin-top: var(--space-1);
+}
+
+.mail-preview {
+  padding: var(--space-4);
+  border: 1px solid var(--rule);
+}
+
+.mail-preview__subject {
+  font-weight: 600;
+}
+
+/* Die Zeilenumbrüche der Vorlage sind Absätze der Mail. */
+.mail-preview__body {
+  margin-top: var(--space-3);
+  white-space: pre-line;
+}
+
 /* --- Kontrastmodus -------------------------------------------------------- */
 
 /* Windows-Kontrastmodus ersetzt alle Farben durch die Systempalette. Die Seite

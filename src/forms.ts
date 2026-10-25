@@ -173,3 +173,28 @@ export function parseSignupForm(body: FormBody, context: SignupFormContext): For
     },
   }
 }
+
+export const MAX_SUBJECT_LENGTH = 200
+export const MAX_BODY_LENGTH = 5000
+
+/**
+ * Die E-Mail-Vorlage. Der Betreff ist eine Zeile; der Text darf alles, nur
+ * nicht leer sein. Die Zeilenumbrüche des Textfelds bleiben, wie sie sind.
+ */
+export function parseTemplateForm(body: FormBody): FormResult<{ subject: string; body: string }> {
+  const subject = field(body, 'subject')
+  // Nicht trimmen ausser am Rand: Leerzeilen im Text sind gewollt.
+  const text = (typeof body.body === 'string' ? body.body : '').replace(/\r\n/g, '\n').trim()
+  const values = { subject, body: text }
+  const errors: FieldErrors = {}
+
+  if (!subject) errors.subject = 'Bitte einen Betreff angeben.'
+  else if (subject.length > MAX_SUBJECT_LENGTH) errors.subject = `Höchstens ${MAX_SUBJECT_LENGTH} Zeichen.`
+  else if (/[\r\n]/.test(subject)) errors.subject = 'Der Betreff muss auf eine Zeile passen.'
+
+  if (!text) errors.body = 'Bitte einen Text angeben.'
+  else if (text.length > MAX_BODY_LENGTH) errors.body = `Höchstens ${MAX_BODY_LENGTH} Zeichen (jetzt ${text.length}).`
+
+  if (Object.keys(errors).length > 0) return { ok: false, errors, values }
+  return { ok: true, value: values }
+}

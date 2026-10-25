@@ -290,6 +290,36 @@ describe('Mitteilung an Naira', () => {
   })
 })
 
+describe('Kalenderdatei', () => {
+  it('liefert einen veröffentlichten Termin als iCalendar aus', async () => {
+    const id = await createWorkshop(env.DB, workshopInput({ note: 'Mit Apéro' }))
+    const res = await get(`/termin/${id}.ics`)
+    const text = await res.text()
+
+    assert.equal(res.status, 200)
+    assert.equal(res.headers.get('content-type'), 'text/calendar; charset=utf-8')
+    assert.match(res.headers.get('content-disposition') ?? '', /filename="workshop-2099-01-10\.ics"/)
+    assert.match(text, /DTSTART:20990110T090000Z\r\n/)
+    assert.match(text, /STATUS:CONFIRMED/)
+  })
+
+  it('liefert abgesagte Termine als CANCELLED, Entwürfe gar nicht', async () => {
+    const cancelled = await createWorkshop(env.DB, workshopInput({ status: 'cancelled' }))
+    const draft = await createWorkshop(env.DB, workshopInput({ status: 'draft' }))
+
+    assert.match(await (await get(`/termin/${cancelled}.ics`)).text(), /STATUS:CANCELLED/)
+    assert.equal((await get(`/termin/${draft}.ics`)).status, 404)
+  })
+
+  it('kennt nur IDs mit .ics', async () => {
+    const id = await createWorkshop(env.DB, workshopInput())
+
+    assert.equal((await get(`/termin/${id}`)).status, 404)
+    assert.equal((await get('/termin/gibtsnicht.ics')).status, 404)
+    assert.equal((await get('/termin/..%2Fadmin.ics')).status, 404)
+  })
+})
+
 describe('mit SIGNUP_BACKEND=tally', () => {
   it('gibt es weder Absenden noch Danke-Seite', async () => {
     const id = await createWorkshop(env.DB, workshopInput())
