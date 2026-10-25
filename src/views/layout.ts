@@ -37,6 +37,11 @@ export interface LayoutOptions {
    * Rechtstexte laden damit weder eigenes Script noch eines von Tally.
    */
   tally?: boolean
+  /**
+   * Turnstile-Script einbinden. Nur auf der eigenen Anmeldeseite — alle anderen
+   * Seiten laden nichts von challenges.cloudflare.com.
+   */
+  turnstile?: boolean
 }
 
 /** Jahr in Schweizer Zeit — der Worker läuft in UTC. */
@@ -129,6 +134,9 @@ export function layout(options: LayoutOptions, content: Html | string): Html {
         <!-- crossorigin ist auch bei gleicher Herkunft nötig, sonst lädt der Font zweimal. -->
         <link rel="preload" href="/fonts/inter-latin-var.woff2" as="font" type="font/woff2" crossorigin />
         <link rel="stylesheet" href="/style.css" />
+        ${options.turnstile
+          ? html`<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>`
+          : ''}
         ${options.head ?? ''}
       </head>
       <body>

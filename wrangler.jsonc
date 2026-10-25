@@ -11,6 +11,15 @@
   "observability": {
     "enabled": true
   },
+  // Öffentliche Werte. Lokal überschreibt .dev.vars sie (siehe .dev.vars.example).
+  "vars": {
+    // `tally` bis zur Umstellung in Phase 6, dann `d1` (plan.md §12).
+    "SIGNUP_BACKEND": "tally",
+    // Sitekey des Turnstile-Widgets und die Domain der Seite — gesetzt, sobald
+    // das Widget für die Zieldomain angelegt ist. Nie localhost.
+    "TURNSTILE_SITE_KEY": "",
+    "TURNSTILE_HOSTNAMES": ""
+  },
   // Termine und Anmeldungen. Angelegt mit `--jurisdiction eu`: die Daten
   // liegen und werden verarbeitet nur in der EU. Lokal liegt die Datenbank
   // unter .wrangler/state. Schema in ./migrations, siehe plan.md §4.

@@ -388,6 +388,12 @@ main:focus {
   color: var(--ink-muted);
 }
 
+/* Uhrzeit und Hinweis unter dem Datum — zurückgenommen, das Datum bleibt die
+   Zeile, die man zuerst liest. */
+.card__meta {
+  color: var(--ink-muted);
+}
+
 .card__notice {
   font-size: var(--text-xs);
   font-weight: 500;

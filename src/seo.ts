@@ -11,7 +11,7 @@
 
 import { raw } from 'hono/html'
 import { BUSINESS, hasAddress, SITE_ORIGIN, WORKSHOP } from './site.ts'
-import type { Workshop } from './workshops.ts'
+import { type Workshop, zurichDateTime } from './workshops.ts'
 import type { Html } from './views/layout.ts'
 import { signupPath } from './views/signup.ts'
 
@@ -29,7 +29,7 @@ export function originOf(requestUrl: string): string {
  *
  * `hono/html` escapt Interpolationen für HTML und würde das JSON zerstören,
  * deshalb `raw()`. Damit liegt das Escaping hier: `<` wird zu `<`, sonst
- * beendet ein `</script>` in einem Wert aus der Tally-API das Script vorzeitig.
+ * beendet ein `</script>` in einem Wert aus Tally oder dem Admin das Script vorzeitig.
  * Das ist die einzige Zeile, die diesen Block sicher macht — nicht entfernen.
  */
 export function jsonLd(data: unknown): Html {
@@ -87,18 +87,28 @@ function offer(workshop: Workshop, origin: string) {
     availability:
       workshop.state === 'soldOut' ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock',
     // Ohne Enddatum wertet Google ein Angebot als unbefristet. Es gilt bis zum
-    // Workshop selbst.
-    validThrough: workshop.date,
+    // Workshop selbst — mit Uhrzeit bis zum Beginn.
+    validThrough: workshop.startTime ? zurichDateTime(workshop.date, workshop.startTime) : workshop.date,
   }
 }
 
 /**
- * Ein Event pro Workshop.
- *
- * `startDate` bleibt datumsgenau: die Uhrzeit steht nirgends in den Daten. Ein
- * Hidden Field `time=10:00` in Tally wäre der Weg dorthin — `parseHiddenFields`
- * liest beliebige Keys bereits.
+ * Beginn und Ende mit Uhrzeit und Schweizer Zeitzone, sobald sie bekannt sind
+ * (D1). Aus Tally bleibt es datumsgenau mit der ungefähren Dauer — dort steht
+ * die Uhrzeit nirgends.
  */
+function schedule(workshop: Workshop) {
+  if (workshop.startTime && workshop.endTime) {
+    return {
+      startDate: zurichDateTime(workshop.date, workshop.startTime),
+      endDate: zurichDateTime(workshop.date, workshop.endTime),
+    }
+  }
+
+  return { startDate: workshop.date, duration: WORKSHOP.durationIso }
+}
+
+/** Ein Event pro Workshop. */
 function event(workshop: Workshop, origin: string) {
   return {
     '@type': 'Event',
@@ -106,12 +116,11 @@ function event(workshop: Workshop, origin: string) {
     name: `Tufting-Workshop in ${BUSINESS.locality}`,
     description:
       'Tagesworkshop: Teppich, Wandbild oder Kissen selbst tuften. Material inklusive, keine Vorkenntnisse nötig.',
-    startDate: workshop.date,
-    duration: WORKSHOP.durationIso,
+    ...schedule(workshop),
     eventStatus: 'https://schema.org/EventScheduled',
     eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
     image: `${origin}/og-image.png`,
-    maximumAttendeeCapacity: WORKSHOP.maxAttendees,
+    maximumAttendeeCapacity: workshop.capacity ?? WORKSHOP.maxAttendees,
     ...(workshop.freeSpots !== null ? { remainingAttendeeCapacity: workshop.freeSpots } : {}),
     // Verweis statt Wiederholung: die Adresse steht einmal im LocalBusiness.
     location: { '@id': `${origin}/#business` },

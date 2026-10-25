@@ -1,10 +1,14 @@
 /**
- * Workshop-Semantik: deutet die Hidden Fields eines Tally-Formulars
- * (`date=12-08-2026`, `freeSpots=4`) und leitet daraus die Cards ab.
+ * Workshop-Semantik für die öffentliche Seite. Zwei Quellen, gewählt über
+ * SIGNUP_BACKEND (plan.md §12): die Hidden Fields der Tally-Formulare
+ * (`date=12-08-2026`, `freeSpots=4`) oder die eigene D1. Beide liefern
+ * dieselben Workshops, damit Cards, Anmeldeseite und JSON-LD nicht wissen
+ * müssen, woher sie kommen.
  *
- * Alles ausser loadWorkshops() ist rein und ohne Netzwerk testbar.
+ * Alles ausser den load-Funktionen ist rein und ohne Netzwerk testbar.
  */
 
+import { listPublishedWorkshops, type WorkshopWithSeats } from './db.ts'
 import { getFormQuestions, listForms, type TallyQuestion } from './tally.ts'
 
 /** Ab so vielen freien Plätzen erscheint kein Hinweis mehr. */
@@ -32,6 +36,15 @@ export interface Workshop {
   /** null heisst unbekannt, nicht ausgebucht. */
   freeSpots: number | null
   state: WorkshopState
+  /**
+   * Uhrzeit und Plätze gibt es nur aus der D1; aus Tally sind sie null. Die
+   * Views zeigen, was da ist, und lassen den Rest weg.
+   */
+  startTime: string | null
+  endTime: string | null
+  capacity: number | null
+  /** Optionaler Satz auf der Card, z.B. „Mit Apéro zum Abschluss“. */
+  note: string | null
 }
 
 export interface WorkshopsResult {
@@ -181,10 +194,93 @@ export async function loadWorkshops(token: string): Promise<WorkshopsResult> {
       date,
       freeSpots,
       state: deriveState(freeSpots),
+      startTime: null,
+      endTime: null,
+      capacity: null,
+      note: null,
     })
   })
 
   workshops.sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name, 'de-CH'))
 
   return { workshops, failed: false }
+}
+
+/**
+ * Ein Termin aus der D1 in der Form, die die öffentlichen Views kennen. Der
+ * Name bleibt leer: Workshops aus der D1 haben keinen, der Titel der Card ist
+ * das Datum.
+ */
+export function fromDatabase(row: WorkshopWithSeats): Workshop {
+  return {
+    id: row.id,
+    name: '',
+    date: row.date,
+    freeSpots: row.free,
+    state: deriveState(row.free),
+    startTime: row.start_time,
+    endTime: row.end_time,
+    capacity: row.capacity,
+    note: row.note,
+  }
+}
+
+/**
+ * Dieselbe Rückgabe wie loadWorkshops(), aus der D1. Die Reihenfolge nach
+ * Datum und Startzeit macht schon die Abfrage.
+ */
+export async function loadWorkshopsFromDatabase(db: D1Database): Promise<WorkshopsResult> {
+  try {
+    const rows = await listPublishedWorkshops(db, todayInZurich())
+    return { workshops: rows.map(fromDatabase), failed: false }
+  } catch (error) {
+    console.error('D1: Termine konnten nicht geladen werden', error)
+    return { workshops: [], failed: true }
+  }
+}
+
+const ZURICH_PARTS = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Europe/Zurich',
+  hourCycle: 'h23',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+})
+
+/**
+ * Abstand von Europe/Zurich zu UTC an diesem Tag und dieser Uhrzeit, als
+ * `+01:00` (Winter) oder `+02:00` (Sommer). Ermittelt über Intl statt fest
+ * eingetragen, damit die Zeitumstellung stimmt.
+ *
+ * Gemessen an der Uhrzeit als UTC gelesen — in der Stunde der Umstellung um
+ * 02:00/03:00 nachts kann das daneben liegen, ein Workshop beginnt dort nie.
+ */
+export function zurichOffset(date: string, time: string): string {
+  const instant = new Date(`${date}T${time}:00Z`)
+  const parts = Object.fromEntries(ZURICH_PARTS.formatToParts(instant).map((part) => [part.type, part.value]))
+  const wall = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour),
+    Number(parts.minute),
+  )
+
+  const minutes = Math.round((wall - instant.getTime()) / 60_000)
+  const sign = minutes < 0 ? '-' : '+'
+  const absolute = Math.abs(minutes)
+  const hours = String(Math.floor(absolute / 60)).padStart(2, '0')
+  return `${sign}${hours}:${String(absolute % 60).padStart(2, '0')}`
+}
+
+/** `2026-11-28` + `10:00` → `2026-11-28T10:00:00+01:00`, für JSON-LD und Kalender. */
+export function zurichDateTime(date: string, time: string): string {
+  return `${date}T${time}:00${zurichOffset(date, time)}`
+}
+
+/** `10:00–17:00`, oder null, solange die Uhrzeit unbekannt ist (Tally). */
+export function formatTimeRange(workshop: Pick<Workshop, 'startTime' | 'endTime'>): string | null {
+  return workshop.startTime && workshop.endTime ? `${workshop.startTime}–${workshop.endTime}` : null
 }

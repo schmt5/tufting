@@ -9,3 +9,15 @@ ADMIN_PASSWORD=
 
 # Schlüssel für das Session-Cookie, mindestens 32 Zeichen, z.B. `openssl rand -hex 32`.
 SESSION_SECRET=
+
+# Quelle der öffentlichen Seite: `tally` oder `d1`. Lokal `d1`, um die eigene
+# Anmeldung zu sehen.
+SIGNUP_BACKEND=d1
+
+# Turnstile lokal mit den öffentlichen Test-Schlüsseln von Cloudflare: der
+# Sitekey besteht immer, das Secret akzeptiert das Dummy-Token, und siteverify
+# meldet dafür den Hostnamen example.com.
+# https://developers.cloudflare.com/turnstile/troubleshooting/testing/
+TURNSTILE_SITE_KEY=1x00000000000000000000AA
+TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
+TURNSTILE_HOSTNAMES=example.com

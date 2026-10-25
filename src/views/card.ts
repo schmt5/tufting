@@ -1,5 +1,5 @@
 import { html } from 'hono/html'
-import { formatWorkshopDate, type Workshop } from '../workshops.ts'
+import { formatTimeRange, formatWorkshopDate, type Workshop } from '../workshops.ts'
 import type { Html } from './layout.ts'
 import { signupPath } from './signup.ts'
 
@@ -46,6 +46,8 @@ function action(workshop: Workshop): Html | string {
  */
 export function renderCard(workshop: Workshop): Html {
   const text = notice(workshop)
+  // Uhrzeit und Hinweis gibt es nur aus der D1; aus Tally fehlen beide.
+  const time = formatTimeRange(workshop)
 
   // Der Formularname aus Tally ist ein interner Bezeichner und erscheint nicht.
   // Das Datum ist der Titel der Card.
@@ -57,6 +59,8 @@ export function renderCard(workshop: Workshop): Html {
         <span class="card__kicker">Workshop am</span>
         <time datetime="${workshop.date}">${formatWorkshopDate(workshop.date)}</time>
       </h3>
+      ${time ? html`<p class="card__meta">${time}</p>` : ''}
+      ${workshop.note ? html`<p class="card__meta">${workshop.note}</p>` : ''}
       ${text ? html`<p class="card__notice">${text}</p>` : ''}
       ${action(workshop)}
     </article>`

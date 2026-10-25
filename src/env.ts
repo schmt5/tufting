@@ -16,4 +16,23 @@ export interface Env {
    * beendet alle Sessions auf allen Geräten.
    */
   SESSION_SECRET?: string
+  /**
+   * Woher die öffentliche Seite Termine und Anmeldung nimmt: `tally` (bisher)
+   * oder `d1` (eigene Anmeldung). Alles ausser `d1` heisst Tally — so bleibt
+   * ein Tippfehler bei der alten, funktionierenden Seite.
+   */
+  SIGNUP_BACKEND?: string
+  /** Öffentlicher Schlüssel des Turnstile-Widgets (Var). */
+  TURNSTILE_SITE_KEY?: string
+  /** Geheimer Schlüssel für siteverify (`wrangler secret put TURNSTILE_SECRET_KEY`). */
+  TURNSTILE_SECRET_KEY?: string
+  /**
+   * Hostnamen, von denen ein Token kommen darf, kommagetrennt. In Produktion
+   * nur die echte Domain, nie localhost.
+   */
+  TURNSTILE_HOSTNAMES?: string
+}
+
+export function usesDatabase(env: Env): boolean {
+  return env.SIGNUP_BACKEND === 'd1'
 }

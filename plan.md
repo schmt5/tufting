@@ -422,7 +422,6 @@ gibt es nur im Admin.
 │       └── admin/           # Layout, Login, Übersicht, Termin, Vorlage
 ├── public/
 │   ├── style.css            # Tokens und Regeln, Admin nutzt dieselben
-│   ├── signup.js            # Turnstile-Callback, sonst nichts
 │   ├── admin/
 │   │   ├── manifest.webmanifest
 │   │   ├── sw.js            # push + notificationclick
@@ -450,6 +449,7 @@ fallen weg.
   "vars": {
     "SIGNUP_BACKEND": "tally",              // bis Phase 6, danach entfernt
     "TURNSTILE_SITE_KEY": "…",
+    "TURNSTILE_HOSTNAMES": "naira-tufting.ch", // nie localhost
     "VAPID_PUBLIC_KEY": "…",
     "VAPID_SUBJECT": "mailto:tuftingstudio.bern@outlook.com"
   }
@@ -520,6 +520,15 @@ Secrets in Produktion sind noch nicht gesetzt.
 
 ### Phase 3 — Öffentliche Anmeldung (3–4h)
 
+Stand: umgesetzt und lokal im Browser durchgespielt (mit den Test-Schlüsseln
+von Turnstile): Karte aus der D1 mit Uhrzeit und Hinweis, Anmeldung, Danke-Seite,
+der volle Termin erscheint als ausgebucht und im Admin. Tests in
+`signup.test.ts` (Requests gegen eine lokale D1, siteverify gemockt), auch für
+den Fall, dass jemand während der Prüfung den letzten Platz bekommt. Öffentlich
+bleibt `SIGNUP_BACKEND=tally`. Offen für Produktion: das Turnstile-Widget für
+die Zieldomain anlegen, `TURNSTILE_SITE_KEY` und `TURNSTILE_HOSTNAMES` setzen,
+`TURNSTILE_SECRET_KEY` als Secret — sinnvoll erst, wenn die Domain steht.
+
 - Startseite und Anmeldeseite lesen aus D1, wenn `SIGNUP_BACKEND=d1`
 - Eigenes Formular, Validierung, Turnstile, Danke-Seite
 - JSON-LD mit Uhrzeit, Sitemap mit Anmeldeseiten
@@ -545,6 +554,8 @@ der Kalender-Link legt den Termin auf iPhone und in Google Calendar richtig an.
 
 ### Phase 6 — Umstellung und Aufräumen (1–2h)
 
+- Turnstile-Widget für die Zieldomain anlegen, Sitekey, Hostnamen und Secret
+  setzen (ohne sie bleibt die Anmeldung mit `d1` zu, statt ungeschützt)
 - Termine im Admin erfassen, `SIGNUP_BACKEND` auf `d1` stellen
 - Tally-Code, `tally.js`, `TALLY_TOKEN` und danach die Var selbst entfernen
 - Kontaktblock auf `mailto:`-Link umstellen, `/kontakt` und `CONTACT_FORM_ID`

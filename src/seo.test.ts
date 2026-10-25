@@ -12,6 +12,10 @@ function workshop(overrides: Partial<Workshop> = {}): Workshop {
     date: '2026-08-12',
     freeSpots: 4,
     state: 'open',
+    startTime: null,
+    endTime: null,
+    capacity: null,
+    note: null,
     ...overrides,
   }
 }
@@ -78,6 +82,29 @@ describe('buildGraph', () => {
     const event = node(buildGraph([workshop({ id: 'VLa1Rj' })], ORIGIN), 'Event')
 
     assert.equal((event.offers as Record<string, unknown>).url, `${ORIGIN}/anmeldung/VLa1Rj`)
+  })
+
+  it('nimmt Beginn und Ende mit Schweizer Zeitzone, sobald die Uhrzeit bekannt ist', () => {
+    const winter = node(
+      buildGraph([workshop({ date: '2026-11-28', startTime: '10:00', endTime: '17:00', capacity: 6 })], ORIGIN),
+      'Event',
+    )
+    const summer = node(buildGraph([workshop({ date: '2027-06-12', startTime: '10:00', endTime: '17:00' })], ORIGIN), 'Event')
+
+    assert.equal(winter.startDate, '2026-11-28T10:00:00+01:00')
+    assert.equal(winter.endDate, '2026-11-28T17:00:00+01:00')
+    assert.ok(!('duration' in winter))
+    assert.equal(winter.maximumAttendeeCapacity, 6)
+    assert.equal((winter.offers as Record<string, unknown>).validThrough, '2026-11-28T10:00:00+01:00')
+    assert.equal(summer.startDate, '2027-06-12T10:00:00+02:00')
+  })
+
+  it('bleibt ohne Uhrzeit datumsgenau mit der ungefähren Dauer', () => {
+    const event = node(buildGraph([workshop()], ORIGIN), 'Event')
+
+    assert.equal(event.startDate, '2026-08-12')
+    assert.equal(event.duration, 'PT7H')
+    assert.ok(!('endDate' in event))
   })
 
   it('ist ohne Workshops immer noch ein gültiger Graph', () => {
