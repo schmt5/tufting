@@ -1,297 +1,622 @@
-# Projektplan: Formular-Übersichtsseite (Hono auf Cloudflare Workers)
+# Projektplan: Workshop-Anmeldung mit eigenem Admin (Hono auf Cloudflare Workers)
 
 ## 1. Ziel
 
-Eine öffentlich erreichbare Webseite, die alle Tally-Formulare eines Workspace als
-Card-Grid darstellt. Jede Card führt auf eine Unterseite mit dem eingebetteten
-Formular, sodass Besucher direkt auf der Seite ausfüllen können — ohne Umweg
-über tally.so.
+Zwei Dinge, sonst nichts:
 
-Die Formularliste wird zur Request-Zeit aus der Tally-API gelesen. Ein neues
-Formular in Tally erscheint damit ohne Deploy auf der Seite.
+1. **Besucher melden sich einfach an.** Termine auf der Startseite, ein Klick
+   auf den Termin, ein kurzes Formular, fertig. Ausgebuchte Termine nehmen keine
+   Anmeldung mehr an — auch nicht, wenn zwei Leute in derselben Sekunde absenden.
+2. **Naira hat den Überblick.** Ein kleiner Admin unter `/admin`, auf dem Handy
+   als App installierbar: Workshops anlegen und pflegen, sehen, wer sich
+   angemeldet hat, bei jeder neuen Anmeldung eine Push-Mitteilung bekommen.
+
+Naira schreibt den Teilnehmenden **selbst**. Die Seite verschickt keine E-Mails
+an Kundinnen und Kunden; sie hilft nur beim Schreiben — mit einer Textvorlage
+und einer Kalenderdatei (`.ics`) pro Termin.
+
+### Bisheriger Stand: die Tally-Version
+
+Bis jetzt kamen Termine und Anmeldung aus Tally: jedes Formular ein Termin,
+Datum und freie Plätze als Hidden Fields, das Formular als iframe auf
+`/anmeldung/{formId}`. Das läuft (Phase 1–4 der alten Planung), hat aber drei
+Grenzen, die sich in Tally nicht lösen lassen:
+
+- **Plätze zählen nicht mit.** Tallys Limit zählt Einsendungen, das Formular
+  fragt aber nach „Anzahl Personen“. Vier Einsendungen à drei Personen ergäben
+  zwölf Leute in einem Workshop für vier. Deshalb wird `freeSpots` heute von
+  Hand gepflegt.
+- **Jeder Seitenaufbau kostet eine API-Anfrage pro Formular.** Tally drosselt
+  bei 100 Anfragen pro Minute, und die Termine hängen am Tally-Workspace, in dem
+  auch fremde Formulare liegen.
+- **Naira sieht die Anmeldungen nur in Tally**, ohne Bezug zu Plätzen und
+  Terminen.
+
+Mit eigener Datenbank fallen alle drei weg. Tally verschwindet aus dem Projekt
+(siehe §12, Phase 6).
 
 ## 2. Stack-Entscheidungen
 
 | Baustein | Wahl | Begründung |
 |---|---|---|
 | Runtime | Cloudflare Workers | Free Plan deckt das Volumen um Grössenordnungen |
-| Framework | Hono | Web-Standard-`fetch`, kein Node-Polyfill nötig, ~14kB |
-| Rendering | `hono/html` (server-side) | Formularliste ist erst zur Request-Zeit bekannt |
-| Assets | Workers Assets (`./public`) | CSS/Fonts ohne Worker-Invocation ausliefern |
-| Build | keiner | Client-JS ist eine Datei: `public/tally.js` |
+| Framework | Hono | Web-Standard-`fetch`, Cookie- und CSRF-Helfer eingebaut |
+| Rendering | `hono/html` (server-side) | Öffentliche Seite wie Admin, ohne Client-Framework |
+| Daten | Cloudflare D1 (SQLite) | Free Plan, echte Transaktionen für den Platz-Check |
+| Spam-Schutz | Cloudflare Turnstile | Gratis, ohne Bilderrätsel, gleicher Anbieter wie das Hosting |
+| Benachrichtigung | Web Push an die Admin-PWA | Gratis, braucht keine eigene Domain und keinen Mailversand |
+| Geplante Jobs | Cron Trigger des Workers | Aufräumen alter Daten, ohne weiteren Dienst |
+| Assets | Workers Assets (`./public`) | CSS, Fonts, Manifest, Service Worker ohne Worker-Invocation |
+| Build | keiner | Client-JS bleibt bei wenigen kleinen Dateien in `public/` |
 | Sprache | TypeScript | |
 
 ### Explizit nicht gewählt
 
-- **Vite / React SPA**: Es gibt keinen client-seitigen State. Ein Bundler würde
-  Build-Zeit und Konfiguration kosten, ohne etwas zu lösen.
-- **Statisches HTML mit Client-Fetch**: Das Tally-Embed-Script setzt die
-  `src`-Attribute beim Laden. Bei nachträglich per JS eingefügten iframes müsste
-  `Tally.loadEmbeds()` manuell und in der richtigen Reihenfolge nachgezogen
-  werden. Server-Rendering vermeidet diese Abhängigkeit vollständig.
-- **Caching (KV / Cache API)**: Bei ~17 Requests pro Tag kein Gegenwert.
-  Nachrüstbar, falls die API-Latenz beim Seitenaufbau störend wirkt — und
-  inzwischen der nächste Kandidat: seit es die Anmeldeseiten gibt, fragen zwei
-  Routen die API, und ein Seitenaufbau kostet eine Anfrage je Formular. Tally
-  drosselt bei 100 Anfragen pro Minute (im Development schon einmal erreicht).
+- **Vite / React SPA, auch für den Admin**: Der Admin ist eine Handvoll Listen
+  und Formulare. Server-Rendering mit normalen `<form>`-Posts reicht und
+  funktioniert auf jedem Handy.
+- **Workers KV als Datenspeicher**: Gewählt ist D1, nicht KV. Der Grund ist der
+  letzte freie Platz: Melden sich zwei Personen in derselben Sekunde an, liest
+  der Worker mit KV für beide „1 Platz frei“ und speichert beide Anmeldungen —
+  zwei Leute auf einem Platz. KV kann nicht „nur speichern, wenn noch Platz
+  ist“ in einem Schritt, und es liefert Werte bis etwa eine Minute alt aus. D1
+  führt die Anmeldung als einen Befehl aus und arbeitet zwei Befehle
+  nacheinander ab: die erste Person bekommt den Platz, bei der zweiten
+  speichert D1 nichts, und sie sieht „ausgebucht“ (§5).
+- **Durable Objects**: Könnten den Platz-Check ebenfalls sicher machen, sind
+  für zwei Tabellen und ein paar Anmeldungen pro Woche aber mehr Konzept als
+  nötig.
+- **E-Mail-Versand (Cloudflare Email Sending)**: Mails an beliebige Empfänger
+  brauchen Workers Paid und eine eigene Domain auf Cloudflare. Naira schreibt
+  ohnehin selbst; für die Benachrichtigung reicht Push.
+- **Cloudflare Access vor `/admin`**: Spart den Login-Code, aber der Umweg über
+  die Access-Anmeldeseite verträgt sich schlecht mit einer installierten PWA
+  (der Login öffnet sich ausserhalb der App).
 
 ## 3. Architektur
 
 ```
-Browser ──GET /──> Worker (Hono)
-                     │
-                     ├─ fetch api.tally.so/forms   (Bearer, serverseitig)
-                     │
-                     └─ HTML mit n × <a href="/anmeldung/{formId}">
-                          │
-Browser ──GET /anmeldung/{id}──> Worker prüft die ID gegen die Terminliste
-                          │
-                          └─ HTML mit <iframe src="tally.so/embed/{id}?…">
-                             + /tally.js → embed.js → Höhe per iframe-resizer
+Besucher ──GET /──────────────> Worker ── SELECT Workshops + belegte Plätze ──> D1
+         ──GET /anmeldung/{id}─> Worker ── Formular (Personenzahl ≤ freie Plätze)
+         ──POST /anmeldung/{id}> Worker ── Turnstile prüfen
+                                        ── INSERT … nur wenn Plätze reichen ────> D1
+                                        ── waitUntil: Push an Nairas Geräte ──> Push-Dienst
+                                        ── 303 → /anmeldung/{id}/danke
+
+Naira    ──/admin/*────────────> Worker ── Session-Cookie prüfen ── D1
+         (installierte PWA)       Service Worker zeigt die Push-Mitteilung,
+                                  ein Tipp öffnet den Termin im Admin
 ```
 
-Auf der Startseite lädt **kein** Formular, egal wie viele Cards dort stehen. Erst
-die Unterseite holt eines — und dort nur dieses eine.
-
-### Routen
+### Öffentliche Routen
 
 | Route | Zweck |
 |---|---|
-| `GET /` | ganze Seite, server-rendered |
-| `GET /anmeldung/{formId}` | Anmeldeseite eines Termins mit eingebettetem Formular |
-| `GET /kontakt` | Kontaktformular, nur wenn `CONTACT_FORM_ID` gesetzt ist |
-| `GET /impressum`, `/datenschutz` | Rechtstexte, ohne Tally-Embed |
-| `GET /robots.txt`, `/sitemap.xml` | aus dem Worker, weil sie absolute URLs enthalten |
+| `GET /` | Startseite, Termine aus D1 |
+| `GET /anmeldung/{id}` | Anmeldeseite eines Termins mit eigenem Formular |
+| `POST /anmeldung/{id}` | Anmeldung speichern, danach Redirect (Post/Redirect/Get) |
+| `GET /anmeldung/{id}/danke` | Bestätigungsseite |
+| `GET /termin/{id}.ics` | Kalenderdatei des Termins — nur Workshopdaten, keine Personendaten |
+| `GET /impressum`, `/datenschutz` | Rechtstexte |
+| `GET /robots.txt`, `/sitemap.xml` | aus dem Worker; die Sitemap kann die Anmeldeseiten jetzt mit aufzählen |
 | alles andere | gestaltete 404 mit `noindex` |
-| `GET /style.css`, `/fonts/*`, `/img/*`, Icons | Assets, vom Worker nicht angefasst |
 
-Die Seite hat sechs Bereiche in dieser Reihenfolge: Header (Wortmarke,
-Ankerlinks), Carousel, „Workshops Stadt Bern", „Wähle deinen Workshoptag" mit
-Kontaktweg, „Ich bin Naira", Footer.
+### Admin-Routen
 
-Kein öffentlicher API-Endpoint. Der Tally-Token verlässt den Worker nie.
+Alle unter `/admin`, alle mit `noindex`, `X-Robots-Tag: noindex` und
+`Cache-Control: no-store` (Personendaten gehören in keinen Cache).
+
+| Route | Zweck |
+|---|---|
+| `GET /admin/login`, `POST /admin/login` | Passwort-Login |
+| `POST /admin/logout` | Session beenden |
+| `GET /admin` | Übersicht: kommende Termine mit belegt/frei, neue Anmeldungen hervorgehoben |
+| `GET /admin/workshops/neu`, `POST /admin/workshops` | Termin anlegen |
+| `GET /admin/workshops/{id}` | Termin mit allen Anmeldungen |
+| `GET /admin/workshops/{id}/bearbeiten`, `POST /admin/workshops/{id}` | Termin ändern, veröffentlichen, absagen |
+| `POST /admin/anmeldungen` | Anmeldung von Hand erfassen (Anfrage per Instagram, mündlich) |
+| `POST /admin/anmeldungen/{id}/kontaktiert` | als „E-Mail geschrieben“ markieren |
+| `POST /admin/anmeldungen/{id}/storniert` | stornieren — gibt die Plätze frei |
+| `POST /admin/anmeldungen/{id}/loeschen` | endgültig löschen |
+| `GET /admin/vorlage`, `POST /admin/vorlage` | E-Mail-Vorlage bearbeiten |
+| `POST /admin/push`, `POST /admin/push/test` | Gerät für Push anmelden, Testmitteilung |
+| `GET /admin/manifest.webmanifest`, `/admin/sw.js`, Icons | PWA, statisch aus `public/admin/` |
+
+Formulare im Admin sind normale `<form method="post">`. HTML kennt nur GET und
+POST, deshalb heissen die Aktionen nach dem, was sie tun, statt PUT/DELETE zu
+simulieren.
 
 ### Datenfluss-Randfall
 
-Fällt die Tally-API aus, darf die Seite nicht mit 500 antworten. Der Fehler wird
-abgefangen, das Grid bleibt leer und zeigt einen Hinweistext. Sichtbar wird der
-Ausfall nur über `console.error` in den Observability-Logs von Cloudflare.
+Ist D1 nicht erreichbar, antwortet die Startseite trotzdem mit 200: die
+Termin-Section zeigt den Hinweistext, der Rest der Seite steht. Die
+Anmeldeseite antwortet mit 503 statt 404 — ob es den Termin gibt, weiss sie in
+dem Moment nicht. Sichtbar wird der Ausfall über `console.error` in den
+Observability-Logs.
 
-## 4. Projektstruktur
+## 4. Datenmodell (D1)
+
+Migrationen liegen in `migrations/` und laufen über
+`wrangler d1 migrations apply`. Zeiten sind ISO-Strings in Schweizer Ortszeit
+(`date` = `YYYY-MM-DD`, `start_time` = `HH:MM`); Zeitstempel sind Unix-Sekunden
+in UTC.
+
+```sql
+CREATE TABLE workshops (
+  id          TEXT PRIMARY KEY,            -- zufällig, kurz, URL-tauglich
+  date        TEXT NOT NULL,               -- YYYY-MM-DD
+  start_time  TEXT NOT NULL,               -- HH:MM, Europe/Zurich
+  end_time    TEXT NOT NULL,               -- HH:MM
+  capacity    INTEGER NOT NULL CHECK (capacity > 0),
+  note        TEXT,                        -- optionaler Satz auf der Card
+  status      TEXT NOT NULL DEFAULT 'draft'
+              CHECK (status IN ('draft', 'published', 'cancelled')),
+  created_at  INTEGER NOT NULL,
+  updated_at  INTEGER NOT NULL
+);
+
+CREATE TABLE signups (
+  id            TEXT PRIMARY KEY,          -- zufällig, nicht erratbar
+  workshop_id   TEXT NOT NULL REFERENCES workshops(id) ON DELETE CASCADE,
+  first_name    TEXT NOT NULL,
+  last_name     TEXT NOT NULL,
+  email         TEXT NOT NULL,
+  persons       INTEGER NOT NULL CHECK (persons > 0),
+  comment       TEXT,
+  source        TEXT NOT NULL DEFAULT 'web' CHECK (source IN ('web', 'admin')),
+  created_at    INTEGER NOT NULL,
+  contacted_at  INTEGER,                   -- Naira hat geschrieben
+  cancelled_at  INTEGER                    -- storniert, zählt nicht mehr
+);
+CREATE INDEX signups_workshop ON signups (workshop_id);
+
+CREATE TABLE templates (
+  key         TEXT PRIMARY KEY,            -- vorerst nur 'confirmation'
+  subject     TEXT NOT NULL,
+  body        TEXT NOT NULL,
+  updated_at  INTEGER NOT NULL
+);
+
+CREATE TABLE push_subscriptions (
+  endpoint    TEXT PRIMARY KEY,
+  p256dh      TEXT NOT NULL,
+  auth        TEXT NOT NULL,
+  label       TEXT,                        -- z.B. „iPhone Naira“
+  created_at  INTEGER NOT NULL
+);
+
+CREATE TABLE login_failures (
+  ip          TEXT NOT NULL,
+  at          INTEGER NOT NULL
+);
+CREATE INDEX login_failures_ip ON login_failures (ip, at);
+```
+
+- **Freie Plätze werden nicht gespeichert, sondern gezählt**:
+  `capacity − SUM(persons)` über die nicht stornierten Anmeldungen. Eine
+  gespeicherte Zahl könnte auseinanderlaufen; eine gezählte nicht.
+- **Kein Preis pro Workshop.** Die Preise sind gestaffelt nach Gruppengrösse und
+  für alle Termine gleich; sie bleiben in `site.ts`. `capacity` wird beim
+  Anlegen mit `WORKSHOP.maxAttendees` vorbelegt.
+- **Zufällige IDs** für Workshops und Anmeldungen, keine fortlaufenden Zahlen:
+  die Workshop-ID steht in öffentlichen Adressen, und eine erratbare
+  Anmelde-ID wäre eine Einladung, sobald sie je irgendwo auftaucht.
+- **`login_failures` speichert die IP** nur für die Sperre nach Fehlversuchen
+  und wird vom Cron nach einem Tag geleert.
+
+## 5. Anmeldung
+
+### Formular
+
+Vorname, Nachname, E-Mail, Anzahl Personen, Bemerkung (optional). Die E-Mail
+ist Pflicht — Naira schreibt jeder Anmeldung selbst. Eine Telefonnummer wird
+bewusst nicht abgefragt.
+
+- **Anzahl Personen ist eine Auswahl von 1 bis zu den freien Plätzen.** Wer
+  zu dritt kommen will, wenn nur zwei frei sind, sieht das schon im Formular.
+- **Unter dem Button** ein Satz mit Link auf die Datenschutzerklärung. Eine
+  Pflicht-Checkbox braucht es in der Schweiz dafür nicht.
+- **Ohne JavaScript** funktioniert das Formular als normaler Post — bis auf
+  Turnstile, das JavaScript braucht. Bewusst in Kauf genommen: Spam-Anmeldungen
+  lösten jedes Mal eine Push-Mitteilung aus.
+- **Fehler** (fehlende Felder, Turnstile, zu wenig Plätze) rendern das Formular
+  erneut mit den eingegebenen Werten und einer Meldung pro Feld.
+
+### Kein Überbuchen
+
+Prüfen und Speichern sind **ein** SQL-Statement. D1 führt Schreibzugriffe auf
+eine Datenbank nacheinander aus, zwei gleichzeitige Anmeldungen können sich
+dazwischen also nicht überholen:
+
+```sql
+INSERT INTO signups (id, workshop_id, first_name, …, persons, created_at)
+SELECT ?1, ?2, ?3, …, ?7, ?8
+WHERE (SELECT capacity FROM workshops WHERE id = ?2 AND status = 'published')
+    - (SELECT COALESCE(SUM(persons), 0) FROM signups
+       WHERE workshop_id = ?2 AND cancelled_at IS NULL)
+    >= ?7
+```
+
+`meta.changes = 0` heisst: nicht mehr genug Plätze (oder der Termin ist
+inzwischen abgesagt). Dann zeigt die Seite die aktuellen freien Plätze statt
+einer Bestätigung. Dass D1 `INSERT … SELECT … WHERE` so ausführt, wird in
+Phase 1 mit einem Test gegen die lokale D1 bestätigt, nicht angenommen.
+
+Von Hand erfasste Anmeldungen im Admin laufen über denselben Check, mit einer
+Ausnahme: Naira kann bewusst überbuchen (Checkbox „trotzdem eintragen“).
+
+### Zustände auf Card und Anmeldeseite
+
+Unverändert aus der Tally-Version, nur aus D1 gerechnet:
+
+- **Vergangene Termine** werden ausgeblendet (Stichtag in Europe/Zurich).
+- **Ausgebucht** (0 frei): Card mit Hinweis, ohne Anmelde-Button; die
+  Anmeldeseite bleibt erreichbar und sagt, warum es kein Formular gibt.
+- **Wenige Plätze** (unter `LOW_SPOTS_THRESHOLD`): „Nur noch n Plätze frei“.
+- **Entwurf** und **abgesagt** erscheinen öffentlich nicht; eine abgesagte
+  Anmeldeseite antwortet mit 404.
+
+## 6. Admin und Login
+
+Ein einziges Konto, kein Benutzername — nur ein Passwort.
+
+- **Das Passwort steht nicht im Code**, sondern als Secret `ADMIN_PASSWORD`
+  (`wrangler secret put`). Im Repository wäre es für alle mit Zugriff lesbar,
+  für immer in der Git-Historie.
+- **Vergleich in konstanter Zeit**: beide Werte mit `SESSION_SECRET` per HMAC
+  hashen und mit `crypto.subtle.timingSafeEqual` vergleichen. Kein PBKDF2 oder
+  bcrypt: ein langsamer Hash schützt gespeicherte Hashes bei einem Datenleck,
+  hier wird aber keiner gespeichert. Viele Hash-Runden sprengten ausserdem die
+  10 ms CPU des Free Plans.
+- **Sperre nach Fehlversuchen**: 5 Fehlversuche pro IP in 15 Minuten, danach
+  ist der Login für diese IP 15 Minuten zu. Gezählt in D1 statt mit dem
+  Rate-Limiting-Binding — das zählt nur ungefähr und pro Standort.
+- **Session** als signiertes Cookie (`setSignedCookie` aus `hono/cookie`) mit
+  Ablaufzeit im Inhalt: `__Host-session`, `HttpOnly`, `Secure`,
+  `SameSite=Lax`, 90 Tage. Lange, weil Naira die App auf dem Handy nicht jede
+  Woche neu entsperren soll. Alle Sessions beenden = `SESSION_SECRET` wechseln.
+- **`SameSite=Lax`, nicht `Strict`**: Ein Tipp auf die Push-Mitteilung öffnet
+  den Admin von ausserhalb der Seite. Mit `Strict` käme das Cookie dabei nicht
+  mit, und Naira landete auf dem Login.
+- **CSRF**: `csrf()`-Middleware von Hono auf allen POST-Routen (prüft den
+  `Origin`-Header). Zusammen mit `Lax` reicht das.
+
+### Admin als PWA
+
+- `public/admin/manifest.webmanifest`: Name „Naira Admin“, `start_url` und
+  `scope` `/admin/`, `display: standalone`, Icons 192 und 512 px.
+- `public/admin/sw.js`: nur `push` und `notificationclick`. **Kein Offline-Cache**
+  — die Seiten enthalten Personendaten, die nicht auf dem Gerät liegen bleiben
+  sollen, und veraltete Belegungen wären schlimmer als „offline“.
+- Manifest, Service Worker und Icons liegen öffentlich in `./public` — sie
+  enthalten nichts Vertrauliches. Alles mit Daten kommt aus dem Worker und
+  braucht die Session.
+
+## 7. Push-Mitteilung an Naira
+
+Bei jeder Anmeldung über die Webseite:
+
+> **Neue Anmeldung 22.11.** — Lisa M., 2 Personen. Noch 1 Platz frei.
+
+- **Gerät anmelden**: Im Admin ein Button „Mitteilungen aktivieren“. Der Browser
+  fragt um Erlaubnis, die Subscription geht per `POST /admin/push` in
+  `push_subscriptions`. Mehrere Geräte sind möglich (Handy, Laptop).
+- **iPhone**: Push für Web-Apps gibt es erst, wenn der Admin zum
+  Home-Bildschirm hinzugefügt wurde (iOS 16.4 oder neuer). Der Admin zeigt
+  einen Hinweis, solange er nicht als App läuft.
+- **Versand** im Worker nach dem Speichern, per `c.executionCtx.waitUntil` —
+  die Besucherin wartet nicht auf den Push-Dienst. VAPID (RFC 8292) und die
+  Verschlüsselung des Inhalts (RFC 8291, `aes128gcm`) laufen über WebCrypto.
+  Ob dafür eine kleine Bibliothek ohne Node-Abhängigkeit taugt oder eigener Code
+  (~150 Zeilen), entscheidet Phase 4.
+- **Abgelaufene Geräte**: Antwortet der Push-Dienst mit 404 oder 410, wird die
+  Subscription gelöscht.
+- **Keine Mitteilung** bei von Hand erfassten Anmeldungen — die hat Naira
+  selbst eingetragen.
+- **Testmitteilung** im Admin, damit sich prüfen lässt, ob es auf dem Gerät
+  ankommt.
+
+Schlägt Push fehl, geht keine Anmeldung verloren: sie steht in D1, und der
+Admin hebt neue Anmeldungen hervor (`contacted_at IS NULL`).
+
+## 8. E-Mail-Vorlage und Kalenderdatei
+
+### Vorlage
+
+Eine Vorlage in `templates` (`key = 'confirmation'`), im Admin bearbeitbar, mit
+Platzhaltern:
+
+| Platzhalter | Wert |
+|---|---|
+| `{vorname}`, `{nachname}` | aus der Anmeldung |
+| `{datum}` | `22.11.2026` |
+| `{zeit}` | `10:00–17:00` |
+| `{personen}` | `2 Personen` / `1 Person` |
+| `{adresse}` | aus `site.ts` |
+| `{kalender}` | absolute URL auf `/termin/{id}.ics` |
+
+Ein Standardtext steht im Code und wird beim ersten Aufruf angelegt.
+Unbekannte Platzhalter bleiben sichtbar stehen statt still zu verschwinden.
+
+Pro Anmeldung im Admin:
+
+- **„E-Mail schreiben“** — ein `mailto:`-Link mit Empfänger, Betreff und Text
+  aus der Vorlage. Öffnet Nairas Mail-App; sie liest, ändert, schickt ab.
+- **„Text kopieren“** — für Mail-Apps, die mit langen `mailto:`-Links nicht
+  umgehen können.
+- Danach **„als geschrieben markieren“** (`contacted_at`).
+
+### Kalenderdatei
+
+`GET /termin/{id}.ics` erzeugt pro Workshop ein `VEVENT` (RFC 5545):
+
+- `DTSTART`/`DTEND` in UTC (`…Z`), aus Datum und Uhrzeit in Europe/Zurich
+  umgerechnet — vermeidet einen `VTIMEZONE`-Block, den jede Kalender-App
+  anders liest.
+- `UID` stabil pro Workshop, damit ein zweiter Import den Termin aktualisiert
+  statt verdoppelt. `METHOD:PUBLISH`, keine Einladung mit Teilnehmerliste.
+- `SUMMARY`, `LOCATION` (Adresse aus `site.ts`), `DESCRIPTION` (was mitbringen),
+  `URL` auf die Anmeldeseite.
+- CRLF-Zeilenenden, Zeilen über 75 Byte gefaltet, `,` `;` `\` und
+  Zeilenumbrüche maskiert. Dafür Unit-Tests.
+
+**Warum ein Link und kein Anhang**: Ein `mailto:`-Link kann keine Dateien
+anhängen. Der Link `{kalender}` im Text tut dasselbe — ein Tipp darauf legt den
+Termin im Kalender an. Die Datei enthält nur Workshopdaten und darf öffentlich
+sein. Wer sie doch als Anhang will, bekommt im Admin zusätzlich „Kalenderdatei
+teilen“ (Web Share API mit Datei); dort muss Naira den Empfänger dann selbst
+wählen, weil die Share-Funktion keinen Empfänger setzen kann.
+
+## 9. Datenschutz
+
+Die Personendaten liegen neu in der eigenen Datenbank statt bei Tally. Das
+ändert die Datenschutzerklärung (`views/legal.ts`):
+
+- **Abschnitt „Anmeldung und Kontakt über Tally“ ersetzen** durch „Anmeldung“:
+  die Angaben (allgemein formuliert wie bisher: „die Angaben für deine
+  Kursanmeldung“) werden in einer Datenbank bei Cloudflare gespeichert und nur
+  für die Organisation des Workshops und die Kontaktaufnahme durch Naira
+  verwendet.
+- **Turnstile** nennen: Beim Absenden prüft Cloudflare, ob ein Mensch das
+  Formular ausfüllt. Gleicher Anbieter wie das Hosting.
+- **Aufbewahrung** bleibt „so lange wie nötig“ im Text. Technisch löscht der
+  Cron Anmeldungen 3 Monate nach dem Workshop.
+- **Speicherort**: D1 mit Standort in Europa anlegen
+  (`--location weur`, bzw. `--jurisdiction eu`, falls verfügbar — in Phase 1
+  prüfen). Dann steht in der Erklärung, wo die Daten liegen.
+- **Push**: Die Mitteilung an Naira läuft verschlüsselt über den Push-Dienst
+  von Apple bzw. Google. Sie enthält Vorname, Initial des Nachnamens und
+  Personenzahl — mehr nicht.
+- **Tally** und die Einbindung von `tally.so` fallen ganz aus der Erklärung.
+  Ein Kontaktformular gibt es nicht mehr, nur einen E-Mail-Link (§13).
+
+Weiterhin gilt: kein Tracking, keine Cookies für Besucher. Das Session-Cookie
+gibt es nur im Admin.
+
+## 10. Projektstruktur
 
 ```
 .
+├── migrations/
+│   └── 0001_init.sql        # Schema aus §4
 ├── src/
-│   ├── index.ts          # Hono-App, alle Routen
-│   ├── site.ts           # Stammdaten: Herkunft, Adresse, Preis, Gruppengrösse
-│   ├── seo.ts            # JSON-LD (LocalBusiness + Event pro Workshop)
-│   ├── seo.test.ts       # Unit-Tests von buildGraph() und jsonLd()
-│   ├── tally.ts          # API-Client: listForms(), getFormQuestions()
-│   ├── workshops.ts      # Workshop-Semantik: Hidden Fields, Datum, Filter
-│   ├── workshops.test.ts # Unit-Tests der reinen Funktionen (node:test)
+│   ├── index.ts             # Hono-App, öffentliche Routen, Cron-Handler
+│   ├── admin.ts             # Admin-Routen, als eigene Hono-Instanz gemountet
+│   ├── auth.ts              # Login, Session-Cookie, Sperre
+│   ├── db.ts                # alle SQL-Statements an einem Ort
+│   ├── workshops.ts         # Zustände, Datum, freie Plätze (rein, testbar)
+│   ├── signup.ts            # Validierung und Platz-Check der Anmeldung
+│   ├── turnstile.ts         # siteverify
+│   ├── push.ts              # VAPID, Verschlüsselung, Versand
+│   ├── ics.ts               # Kalenderdatei
+│   ├── template.ts          # Platzhalter ersetzen, mailto-Link bauen
+│   ├── site.ts              # Stammdaten (unverändert)
+│   ├── seo.ts               # JSON-LD, jetzt mit Uhrzeit
+│   ├── *.test.ts            # node:test, wie bisher
 │   └── views/
-│       ├── layout.ts     # html-Skeleton, Head, Meta, Header, Footer, Script
-│       ├── gallery.ts    # Bildliste und CSS-only Carousel
-│       ├── intro.ts      # Section "Tufting-Workshops in Bern"
-│       ├── schedule.ts   # Section "Wähle deinen Workshoptag" + Kontakt
-│       ├── card.ts       # eine Form-Card
-│       ├── signup.ts     # Formularseiten: Anmeldung je Termin, Kontakt
-│       ├── about.ts      # Section "Ich bin Naira"
-│       └── legal.ts      # Impressum, Datenschutz, 404
+│       ├── layout.ts, gallery.ts, intro.ts, schedule.ts, card.ts,
+│       │   about.ts, legal.ts                   # öffentliche Seite
+│       ├── signup.ts        # Anmeldeformular, Danke-Seite (statt Tally-Embed)
+│       └── admin/           # Layout, Login, Übersicht, Termin, Vorlage
 ├── public/
-│   ├── style.css         # Tokens und Regeln, siehe DESIGN_GUIDE.md
-│   ├── tally.js          # startet die Embeds der Formularseiten
-│   ├── fonts/            # Inter (Latin-Subset, self-hosted) + OFL-Lizenz
-│   ├── img/              # Carousel, Intro-Bilder, Porträt (aktuell Platzhalter)
-│   ├── favicon.svg       # Wortmarke als N, dazu .ico und apple-touch-icon
-│   └── og-image.png      # Link-Vorschau 1200×630 (aktuell typografisch)
+│   ├── style.css            # Tokens und Regeln, Admin nutzt dieselben
+│   ├── signup.js            # Turnstile-Callback, sonst nichts
+│   ├── admin/
+│   │   ├── manifest.webmanifest
+│   │   ├── sw.js            # push + notificationclick
+│   │   ├── admin.js         # Push aktivieren, Text kopieren, Teilen
+│   │   └── icon-192.png, icon-512.png
+│   ├── fonts/, img/, favicon.svg, og-image.png
 ├── wrangler.jsonc
 ├── tsconfig.json
 └── package.json
 ```
 
-## 5. Konfiguration
+`tally.ts`, `public/tally.js` und das Hidden-Field-Parsing in `workshops.ts`
+fallen weg.
 
-`wrangler.jsonc`:
+## 11. Konfiguration
+
+`wrangler.jsonc` (Ergänzungen):
 
 ```jsonc
 {
-  "name": "formular-uebersicht",
-  "main": "src/index.ts",
-  "compatibility_date": "2026-08-01",
-  "assets": {
-    "directory": "./public"
-  },
-  "observability": { "enabled": true }
+  "d1_databases": [
+    { "binding": "DB", "database_name": "tufting", "database_id": "…" }
+  ],
+  "triggers": { "crons": ["0 3 * * *"] },   // täglich 03:00 UTC aufräumen
+  "vars": {
+    "SIGNUP_BACKEND": "tally",              // bis Phase 6, danach entfernt
+    "TURNSTILE_SITE_KEY": "…",
+    "VAPID_PUBLIC_KEY": "…",
+    "VAPID_SUBJECT": "mailto:tuftingstudio.bern@outlook.com"
+  }
 }
 ```
 
-Secrets (nicht im Repo):
+Secrets (nicht im Repo, lokal in `.dev.vars`):
 
 ```bash
-wrangler secret put TALLY_TOKEN
+wrangler secret put ADMIN_PASSWORD
+wrangler secret put SESSION_SECRET
+wrangler secret put TURNSTILE_SECRET_KEY
+wrangler secret put VAPID_PRIVATE_KEY
 ```
 
-Lokal via `.dev.vars` (in `.gitignore`).
+`TALLY_TOKEN` wird nach der Umstellung gelöscht.
 
-## 6. Umsetzung in Phasen
+Vor jedem Deploy einmal `wrangler dev --remote`: die Edge ist strenger als das
+lokale workerd, lokal grün heisst nicht deploybar.
 
-Stand: Phase 1–4 umgesetzt (Tally-Anbindung, Cards, Embed, Fehlerfallback,
-Meta-Schicht, Favicon, strukturierte Daten, Rechtstexte). Design Guide und CSS
-stehen (`DESIGN_GUIDE.md`, `public/style.css`). Offen aus Phase 4: Lighthouse auf
-der Zieldomain und die Custom Domain selbst.
+## 12. Umsetzung in Phasen
 
-### Phase 1 — Gerüst (0.5h)
+Jede Phase ist für sich deploybar. Bis Phase 6 läuft die Tally-Version
+öffentlich weiter: Startseite und Anmeldeseite wählen ihre Quelle über die Var
+`SIGNUP_BACKEND` (`tally` oder `d1`), Standard bleibt `tally`. Lokal und in
+`.dev.vars` steht sie auf `d1`. Der Admin ist ab Phase 2 erreichbar, öffentlich
+verlinkt ist er nirgends.
 
-- `npm create hono@latest`, Template `cloudflare-workers`
-- `wrangler.jsonc` mit `assets`-Block ergänzen
-- Route `/` liefert statisches Dummy-HTML
-- `wrangler dev` läuft, `wrangler deploy` funktioniert
+### Phase 1 — Datenbank (2–3h)
 
-**Fertig wenn**: Eine leere Seite ist unter der `workers.dev`-Subdomain erreichbar.
+- D1 anlegen (Standort Europa), Migration `0001_init.sql`
+- `db.ts` mit den Abfragen für Startseite, Anmeldeseite, Admin
+- Test: der Platz-Check aus §5 lehnt die Überbuchung ab, auch bei zwei
+  gleichzeitigen Anmeldungen
 
-### Phase 2 — Tally-Anbindung (1h)
+**Fertig wenn**: `wrangler d1 migrations apply` läuft lokal und remote, und der
+Überbuchungs-Test ist grün.
 
-- API-Token in Tally erstellen, als Secret setzen
-- `src/tally.ts`: `listForms()` gegen `GET /forms`
-- Response-Shape verifizieren und typisieren — die Feldnamen sind aus der
-  Doku zu bestätigen, nicht zu erraten
-- Filter: nur veröffentlichte Formulare, gelöschte ausschliessen
+### Phase 2 — Login und Admin-Grundgerüst (3–4h)
 
-**Fertig wenn**: Route `/` gibt die Formularnamen als `<ul>` aus.
+- `auth.ts`: Login, Session, Sperre, Logout, `csrf()`
+- Admin-Layout, Übersicht, Termin anlegen/bearbeiten/absagen
+- Terminansicht mit Anmeldungen, stornieren, löschen, von Hand erfassen
 
-### Phase 3 — Cards und Embed (1–2h)
+**Fertig wenn**: Naira kann sich einloggen und einen Termin anlegen, der in der
+Übersicht mit 0 von 4 Plätzen steht.
 
-- `card.ts`: Card-Markup mit `<a href="/anmeldung/{formId}">`
-- Embed-Parameter festlegen (`alignLeft`, `hideTitle`, `transparentBackground`,
-  `dynamicHeight` — siehe `signup.ts`)
-- `tally.js` einmalig am Ende des `<body>` der Formularseiten
-- CSS: Grid, Card-Rahmen, responsive Breakpoints
+### Phase 3 — Öffentliche Anmeldung (3–4h)
 
-**Fertig wenn**: Alle Formulare sind auf der Seite ausfüllbar.
+- Startseite und Anmeldeseite lesen aus D1, wenn `SIGNUP_BACKEND=d1`
+- Eigenes Formular, Validierung, Turnstile, Danke-Seite
+- JSON-LD mit Uhrzeit, Sitemap mit Anmeldeseiten
 
-### Phase 4 — Robustheit und Politur (1h)
+**Fertig wenn**: Eine Anmeldung über die Seite erscheint im Admin, und ein
+voller Termin nimmt keine weitere an.
 
-- Fehlerfall Tally-API: Fallback-Rendering
-- `<meta>`-Tags, Titel, Favicon, `lang`-Attribut
-- Lighthouse-Durchlauf, `loading="lazy"` auf den iframes prüfen
-- Custom Domain aufschalten
+### Phase 4 — Push (3–4h)
 
-**Fertig wenn**: Deploy auf der Zieldomain, Lighthouse ohne rote Punkte.
+- VAPID-Schlüssel erzeugen, `push.ts`, Service Worker, Manifest und Icons
+- „Mitteilungen aktivieren“, Testmitteilung, Aufräumen abgelaufener Geräte
 
-Geschätzter Gesamtaufwand: **3.5–4.5h**.
+**Fertig wenn**: Auf Nairas iPhone (Admin auf dem Home-Bildschirm) kommt bei
+einer Anmeldung die Mitteilung an, und ein Tipp öffnet den Termin.
 
-## 7. Offene Punkte
+### Phase 5 — Vorlage und Kalenderdatei (2–3h)
 
-### Entschieden
+- `templates`, Vorlage im Admin, `mailto:`-Link, Text kopieren
+- `ics.ts` mit Tests, Route `/termin/{id}.ics`, Teilen-Button
 
-- **Workshop-Metadaten**: Jedes Formular trägt sie als `key=value` in einem
-  `HIDDEN_FIELDS`-Block — `date=DD-MM-YYYY` und `freeSpots=n`. Das kompakte
-  Altformat `DDMMYYYY` wird weiterhin gelesen.
-- **Card-Titel ist das Datum.** Die Workshops haben keinen eigenen Namen; der
-  Formularname aus Tally bleibt interner Bezeichner und wird nicht angezeigt.
-- **Bildergalerie** unter dem Grid als CSS-only Carousel (Scroll-Snap,
-  `::scroll-button`, `::scroll-marker`), gespeist aus `src/views/gallery.ts`.
-  Aktuell Platzhalter — echte Bilder ersetzen die Liste 1:1.
-- **Formular-Reihenfolge**: aufsteigend nach `date`, bei Gleichstand nach Name.
-  Keine manuelle Liste, kein Deploy pro Änderung.
-- **Beschreibungstext pro Card**: `GET /forms` liefert **kein** Beschreibungsfeld.
-  Falls Text gebraucht wird, ist ein weiteres Hidden Field der Weg — der Parser
-  liest beliebige Keys schon heute.
-- **Vergangene Workshops** werden ausgeblendet, **ausgebuchte** (`freeSpots=0`)
-  erscheinen mit Hinweis, aber ohne Anmelde-Button.
-- **Darstellung des Formulars**: eingebettet auf einer eigenen Unterseite, nicht
-  als Popup. Das Popup war der erste Weg und ist daran gescheitert, dass die
-  Formulare länger sind, als ein Overlay hoch ist: man scrollt in einem Kasten
-  im Kasten und sieht nie das ganze Formular. Auf einer eigenen Seite wächst das
-  iframe per `dynamicHeight` auf seine volle Höhe, die Adresse ist teilbar, und
-  der Zurück-Weg ist der Zurück-Knopf des Browsers. Die Startseite bleibt frei
-  von Formularen — sie verlinkt nur.
-- **`src` am iframe, nicht `data-tally-src`**: `embed.js` behandelt genau zwei
-  Fälle — `data-tally-src` ohne `src` (Start über einen IntersectionObserver)
-  und `src` ohne `data-tally-src` (Resizer sofort). Beide Attribute zusammen
-  fallen durch beide Raster, das iframe bliebe auf seiner Anfangshöhe stehen.
-  Mit `src` lädt das Formular ausserdem ohne JavaScript, dann eben mit fester
-  Höhe und eigenem Scrollbalken.
-- **Die ID wird gegen die Terminliste geprüft**, nicht nur gegen ein Muster:
-  sonst bettete `/anmeldung/{id}` jedes beliebige fremde Tally-Formular ein.
-  Fällt die API aus, antwortet die Route mit 503 statt mit einer 404 — dass es
-  den Termin nicht gibt, weiss die Seite in dem Moment nämlich nicht.
-- **`freeSpots` wird manuell in Tally gepflegt** und zählt bei einer Anmeldung
-  nicht selbst herunter — so gewollt. Die Zahl im Hidden Field ist die Wahrheit,
-  der Worker rechnet nichts daraus ab. Eine unlesbare Zahl (Tippfehler) gilt als
-  *unbekannt* und lässt die Anmeldung offen, statt sie zu blockieren.
+**Fertig wenn**: „E-Mail schreiben“ öffnet die Mail-App mit fertigem Text, und
+der Kalender-Link legt den Termin auf iPhone und in Google Calendar richtig an.
 
-- **Strukturierte Daten**: `LocalBusiness` plus ein `Event` pro Workshop als
-  JSON-LD (`src/seo.ts`), gespeist aus denselben Daten wie die Cards. Damit sind
-  Datum, Preis, Ort und der Ausgebucht-Zustand für Google lesbar — ohne Markup
-  stehen sie nur als Fliesstext da.
-- **Impressum und Datenschutz** als eigene Routen mit Footer-Link. Nötig, weil
-  die Startseite beim Klick `tally.so/widgets/embed.js` von einem Drittanbieter
-  nachlädt. Auf den Rechtstexten selbst wird nicht einmal `tally.js` eingebunden.
-  Die Datenschutzerklärung zählt die Formularfelder bewusst nicht auf („Angaben
-  für deine Kursanmeldung oder deine Kontaktanfrage“) und nennt keine feste
-  Aufbewahrungsdauer, sondern „so lange wie nötig“. Das Impressum hat keinen
-  Abschnitt zu Rechtsform und Register, weil kein Handelsregistereintrag besteht.
-- **`robots.txt` und `sitemap.xml` kommen aus dem Worker**, nicht aus `./public`:
-  beide enthalten absolute URLs und stimmen so auf jeder Domain, auch bevor die
-  Custom Domain steht.
-- **Card-Titel ist `h3`**, nicht `h2` — `h2` gehört dem Sectiontitel „Wähle
-  deinen Workshoptag". Zwei `h2` nebeneinander lesen sich im Screenreader als
-  zwei gleichrangige Bereiche statt als Liste von Terminen.
+### Phase 6 — Umstellung und Aufräumen (1–2h)
 
-### Weiterhin offen
+- Termine im Admin erfassen, `SIGNUP_BACKEND` auf `d1` stellen
+- Tally-Code, `tally.js`, `TALLY_TOKEN` und danach die Var selbst entfernen
+- Kontaktblock auf `mailto:`-Link umstellen, `/kontakt` und `CONTACT_FORM_ID`
+  entfernen
+- Datenschutzerklärung nach §9, `DESIGN_GUIDE.md` nachführen
+- Cron: Anmeldungen 3 Monate nach dem Workshop und `login_failures` nach einem
+  Tag löschen
 
-- **Stammdaten in `src/site.ts`**: bis auf die **Hausnummer** vollständig. Ohne
-  sie findet eine Kartensuche nur den Platz, nicht das Studio. Was fehlt, ist
-  `null` und wird weggelassen statt geraten: eine erfundene Angabe in
-  strukturierten Daten ist schlechter als keine.
-- **Uhrzeit der Workshops**: `Event.startDate` ist bisher nur datumsgenau, weil
-  die Zeit nirgends in den Daten steht. Ein Hidden Field `time=10:00` wäre der
-  Weg — `parseHiddenFields()` liest beliebige Keys bereits heute.
-- **Kontaktformular „Schreibe mir"**: ein festes Tally-Formular auf `/kontakt`
-  — derselbe Weg wie die Anmeldung. Die ID gehört in die Konstante
-  `CONTACT_FORM_ID` in `site.ts`; solange sie leer ist, gibt es die Route nicht
-  und im Kontaktblock steht ein Hinweis statt des Links.
-- **Logo**: aktuell die Wortmarke „Naira Tufting" als Text. Ein echtes Logo
-  ersetzt die Konstante `WORDMARK` in `layout.ts` — und `favicon.svg`.
-- **Bilder**: Carousel (3:2), Intro-Bilder (4:3) und Porträt (3:4) sind
-  Platzhalter-SVGs. Die vier Rasterbilder tragen `alt=""`, weil sie als
-  Platzhalter dekorativ sind; echte Fotos brauchen je einen eigenen Alt-Text.
-  `og-image.png` ist typografisch gesetzt und gehört durch ein echtes Foto
-  ersetzt (1200×630, PNG oder JPEG — SVG funktioniert als Link-Vorschau nicht).
-- **Rechtstexte inhaltlich prüfen lassen**: `views/legal.ts` ist eine Vorlage.
-  Was sich aus dem Code ergibt (Cloudflare als Hoster, Tally als Formularanbieter)
-  steht ausformuliert da, alles andere als markierter Platzhalter.
-- **Custom Domain**: Steht die zur Verfügung, oder reicht `workers.dev`? Sobald
-  sie steht, gehört sie in `SITE_ORIGIN` — bis dahin ist die Herkunft des
-  Requests kanonisch, und `workers.dev` und Zieldomain gälten als zwei Seiten.
-- **Formular-Auswertung**: Bleiben die Submissions in Tally, oder braucht es
-  später einen Webhook auf denselben Worker?
+**Fertig wenn**: Kein Request geht mehr an Tally, und die Rechtstexte
+beschreiben, was die Seite tatsächlich tut.
 
-## 8. Nicht im Scope
+Geschätzter Gesamtaufwand: **14–20h**.
 
-- Authentifizierung / geschützte Formulare
-- Anzeige oder Auswertung von Submissions
-- CMS oder Admin-Oberfläche zur Pflege der Seite
+## 13. Entscheidungen und offene Punkte
+
+### Entschieden (aus der Tally-Version übernommen)
+
+- **Card-Titel ist das Datum**, als `h3` unter dem `h2` „Wähle deinen
+  Workshoptag“. Workshops haben keinen eigenen Namen.
+- **Reihenfolge** aufsteigend nach Datum und Startzeit.
+- **Anmeldung auf einer eigenen Unterseite**, nicht als Popup: teilbare Adresse,
+  Zurück-Knopf des Browsers als Rückweg, die Startseite verlinkt nur.
+- **Die ID wird gegen die Datenbank geprüft**; unbekannte und abgesagte Termine
+  laufen auf die 404, ein Datenbank-Ausfall auf 503.
+- **Strukturierte Daten**: `LocalBusiness` plus ein `Event` pro Termin,
+  gespeist aus denselben Daten wie die Cards — jetzt mit Uhrzeit und
+  `remainingAttendeeCapacity` aus der Zählung.
+- **`robots.txt` und `sitemap.xml` aus dem Worker**, weil sie absolute URLs
+  enthalten.
+- **Rechtstexte** als eigene Routen. Die Datenschutzerklärung zählt die Felder
+  nicht einzeln auf und nennt keine feste Aufbewahrungsdauer. Kein
+  Registerabschnitt im Impressum, weil kein Handelsregistereintrag besteht.
+- **Bildergalerie** als CSS-only Carousel aus `views/gallery.ts`.
+- **Fehler nur in den Observability-Logs**, kein externer Fehlerdienst.
+
+### Entschieden (neu)
+
+- **Eigene Anmeldung statt Tally**, mit D1 als einziger Quelle für Termine und
+  Plätze (§1).
+- **Keine E-Mails an Teilnehmende** aus dem System. Naira schreibt selbst, mit
+  Vorlage und Kalender-Link (§8).
+- **Ein Admin-Konto mit Passwort als Secret** (§6).
+- **Benachrichtigung per Push**, nicht per E-Mail (§7). Nach einem Tipp auf die
+  Mitteilung mit abgelaufener Session führt der Login auf die Übersicht, nicht
+  zurück auf den Termin — ein Randfall, der keinen eigenen Code wert ist.
+- **Anmeldungen werden 3 Monate nach dem Workshop gelöscht** — genug für
+  Nachfragen, Gutscheine, Nachholtermine. In der Datenschutzerklärung bleibt
+  es bei „so lange wie nötig“.
+- **Kontakt „Schreibe mir“ ist ein `mailto:`-Link** auf Nairas Adresse, kein
+  Formular. Sie antwortet sowieso per Mail; es braucht weder Tabelle noch
+  Formular noch Tally.
+- **Keine Telefonnummer**, die E-Mail ist Pflicht.
+
+### Offen
+
+- **Was mitbringen / Treffpunkt**: fester Text für die Kalenderdatei und die
+  Vorlage — muss von Naira kommen.
+- **Stammdaten in `src/site.ts`**: die **Hausnummer** fehlt noch. Ohne sie
+  findet eine Kartensuche nur den Platz, und die Kalenderdatei hätte eine
+  unvollständige Adresse.
+- **Logo**: ersetzt `WORDMARK` in `layout.ts`, `favicon.svg` und die
+  Admin-Icons.
+- **Bilder**: Carousel (3:2), Intro (4:3), Porträt (3:4) und `og-image.png`
+  sind Platzhalter; echte Fotos brauchen je einen Alt-Text.
+- **Rechtstexte inhaltlich prüfen lassen**, nach der Anpassung aus §9.
+- **Custom Domain**: Sobald sie steht, gehört sie in `SITE_ORIGIN`. Für Push
+  und Admin reicht `workers.dev`; ein Domainwechsel heisst aber, dass Naira die
+  App neu installieren und Mitteilungen neu aktivieren muss (andere Herkunft).
+  Besser also vor der Installation auf ihrem Handy.
+
+## 14. Nicht im Scope
+
+- E-Mail-Versand an Teilnehmende, Erinnerungen, Newsletter
+- Online-Zahlung
+- Mehrere Admin-Konten, Rollen, Passwort-Reset per Mail
+  (Reset = neues Secret setzen)
+- Warteliste — nachrüstbar über `signups` mit einem Status
+- Offline-Modus des Admins
 - Mehrsprachigkeit
 
-## 9. Betriebsgrenzen (Free Plan)
+## 15. Betriebsgrenzen (Free Plan)
 
-Erwartetes Volumen: ~500 Seitenaufrufe pro Monat, also ~17 Requests pro Tag.
+Erwartetes Volumen: ~500 Seitenaufrufe und eine Handvoll Anmeldungen pro Monat.
 
 | Limit | Free Plan | Erwartete Nutzung |
 |---|---|---|
-| Requests | 100'000 / Tag | ~17 / Tag |
-| CPU-Zeit | 10ms / Invocation | < 1ms (I/O-Wartezeit zählt nicht) |
-| Subrequests | 50 / Invocation | 1 + ein Request pro Formular |
-| Asset-Requests | unbegrenzt, gratis | |
+| Worker-Requests | 100'000 / Tag | ~20 / Tag |
+| CPU-Zeit | 10 ms / Invocation | < 2 ms, auch mit Push-Verschlüsselung |
+| Subrequests | 50 / Invocation | Turnstile + 1 pro Push-Gerät |
+| D1 gelesene Zeilen | 5 Mio. / Tag | wenige Tausend |
+| D1 geschriebene Zeilen | 100'000 / Tag | einstellig |
+| D1 Speicher | 5 GB | wenige KB |
+| Cron Trigger | im Free Plan enthalten | 1 pro Tag |
+| Turnstile | gratis | |
+| Web Push | gratis (Push-Dienste von Apple/Google) | |
 
-Kein Grund für den Paid Plan. Reserve über den Faktor 1000.
-
-**Achtung Subrequests**: Die Workshop-Metadaten stehen nur in
-`GET /forms/{id}/questions`, nicht in der Formularliste. Pro Seitenaufbau fällt
-also ein Request pro veröffentlichtem Formular an — die Obergrenze liegt damit bei
-rund **49 Formularen**. Entwürfe und geschlossene Formulare werden vor den
-Detail-Requests herausgefiltert und zählen nicht mit. Wird die Grenze je knapp, ist
-Caching (KV oder Cache API) der Ausweg, den §2 bereits als nachrüstbar vorsieht.
+Kein Grund für den Paid Plan. Die Tally-Grenzen (100 API-Anfragen pro Minute,
+~49 Formulare pro Seitenaufbau) entfallen.
