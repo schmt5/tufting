@@ -73,33 +73,40 @@ function state(signup: SignupRow): Html {
 }
 
 /**
- * Wege zu schreiben:
+ * Wege zu schreiben, der erste ist der Hauptknopf — Naira schreibt die Mail
+ * meist selbst:
  *
- * - „E-Mail schreiben“ ist ein mailto-Link und geht überall — aber ohne
- *   Anhang, das lässt mailto nicht zu. Der Kalender steht dann als Link im
- *   Text.
- * - „Einladung herunterladen“ lädt die Einladung herunter, zum Anhängen von Hand. Das ist
- *   der Weg auf dem Laptop, wo es das Teilen-Menü meist nicht gibt. Erst als
- *   Anhang zeigen Gmail und Outlook „Ja / Vielleicht / Nein“.
+ * - „Einladung herunterladen“ lädt die Einladung herunter, zum Anhängen von
+ *   Hand. Erst als Anhang zeigen Gmail und Outlook „Ja / Vielleicht / Nein“.
  * - „Mail mit Kalender“ hängt die Einladung als echte Datei an, über das
- *   Teilen-Menü des Geräts (Web Share). Erst als Anhang schlagen Gmail und
- *   Outlook den Termin direkt vor. Einen Empfänger kann das Teilen-Menü nicht
- *   setzen; admin.js kopiert deshalb die Adresse in die Zwischenablage.
+ *   Teilen-Menü des Geräts (Web Share). Einen Empfänger kann das Teilen-Menü
+ *   nicht setzen; admin.js kopiert deshalb die Adresse in die Zwischenablage.
+ * - „E-Mail schreiben“ ist ein mailto-Link mit der ausgefüllten Vorlage und
+ *   geht überall — aber ohne Anhang, das lässt mailto nicht zu. Der Kalender
+ *   steht dann als Link im Text.
  * - „Text kopieren“ (im Menü) für Mail-Apps, die mit langen mailto-Links
  *   nicht umgehen können.
  *
- * Die beiden letzten brauchen JavaScript und eine passende Schnittstelle im
- * Browser — sie stehen versteckt im HTML, und /admin/admin.js zeigt sie nur,
- * wo sie auch gehen. Teilen mit Datei gibt es vor allem auf dem Handy und in
- * Safari.
+ * „Mail mit Kalender“ und „Text kopieren“ brauchen JavaScript und eine
+ * passende Schnittstelle im Browser — sie stehen versteckt im HTML, und
+ * /admin/admin.js zeigt sie nur, wo sie auch gehen. Teilen mit Datei gibt es
+ * vor allem auf dem Handy und in Safari.
  */
 function mailButtons(signup: SignupRow, info: SignupMailInfo): Html {
   const invite = `/admin/anmeldungen/${signup.id}/einladung.ics`
   const label = info.workshopCancelled ? 'Absage herunterladen' : 'Einladung herunterladen'
 
   return html`<span class="mail-buttons">
-      <button
+      <a
         class="button button--small"
+        href="${invite}"
+        download="${info.inviteFilename}"
+        title="Kalenderdatei zum Anhängen an deine Mail"
+      >
+        ${ICON_DOWNLOAD} ${label}<span class="visually-hidden"> für ${signup.first_name} ${signup.last_name}</span>
+      </a>
+      <button
+        class="button button--small button--secondary"
         type="button"
         data-invite="${invite}"
         data-invite-name="${info.inviteFilename}"
@@ -110,15 +117,7 @@ function mailButtons(signup: SignupRow, info: SignupMailInfo): Html {
       >
         Mail mit Kalender
       </button>
-      <a
-        class="button button--small button--secondary"
-        href="${invite}"
-        download="${info.inviteFilename}"
-        title="Kalenderdatei zum Anhängen an deine Mail"
-      >
-        ${ICON_DOWNLOAD} ${label}<span class="visually-hidden"> für ${signup.first_name} ${signup.last_name}</span>
-      </a>
-      <a class="button button--small" href="${info.mail.mailto}" data-mail-fallback>E-Mail schreiben</a>
+      <a class="button button--small button--secondary" href="${info.mail.mailto}">E-Mail schreiben</a>
     </span>`
 }
 

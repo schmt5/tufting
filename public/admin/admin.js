@@ -123,8 +123,6 @@ async function setupInvite(button) {
   }
 
   button.hidden = false
-  // Wo der Anhang geht, ist er der Hauptweg; der mailto-Link tritt zurück.
-  button.parentElement?.querySelector('[data-mail-fallback]')?.classList.add('button--secondary')
   for (const hint of document.querySelectorAll('[data-invite-hint]')) hint.hidden = false
 
   button.addEventListener('click', async () => {

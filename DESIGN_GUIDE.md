@@ -351,11 +351,12 @@ bedienbar, ist aber nicht darauf optimiert.
   Tabelle `.table`, neue zuerst; stornierte zugeklappt darunter. Bearbeiten und
   „Neuer Termin“ öffnen sich rechts, die Liste bleibt stehen.
 - **Aktionen pro Anmeldung**, von links: das Menü „⋮“ `.menu` für Seltenes,
-  „Einladung herunterladen“ (die Kalender-Einladung zum Anhängen von Hand; bei
-  abgesagtem Termin „Absage herunterladen“), „E-Mail schreiben“ (bzw. „Mail mit
-  Kalender“, wo das Gerät Dateien teilen kann) und „Erledigt“. Das Menü
-  ist ein `<details>`, geht ohne JavaScript; `admin.js` schliesst es
-  bei Klick daneben und Escape. Löschen darin mit Zwischenschritt `.confirm`.
+  „Einladung herunterladen“ als Hauptknopf (die Kalender-Einladung zum
+  Anhängen von Hand; bei abgesagtem Termin „Absage herunterladen“), „Mail mit
+  Kalender“ (nur wo das Gerät Dateien teilen kann), „E-Mail schreiben“ und
+  „Erledigt“. Das Menü ist ein `<details>`, geht ohne JavaScript; `admin.js`
+  schliesst es bei Klick daneben und Escape. Löschen darin mit Zwischenschritt
+  `.confirm`.
 - **Rückmeldung `.toast`**: unten rechts, fixiert, damit sie auch nach dem
   Sprung zu einer Anmeldung sichtbar bleibt. Mit JavaScript wegklickbar.
 - **Als App**: Manifest „Naira Admin“, Icons aus der Wortmarke, `theme-color`
