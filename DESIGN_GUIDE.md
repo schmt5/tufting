@@ -357,6 +357,10 @@ bedienbar, ist aber nicht darauf optimiert.
   „Erledigt“. Das Menü ist ein `<details>`, geht ohne JavaScript; `admin.js`
   schliesst es bei Klick daneben und Escape. Löschen darin mit Zwischenschritt
   `.confirm`.
+- **Anmeldungen auf dem Handy**: unter 860px wird jede Tabellenzeile per CSS
+  zur Karte (Name und Status, Personen und Datum, Bemerkung, Knöpfe) — kein
+  seitliches Scrollen. Die Spaltennamen stehen dann als `.cell-label` in der
+  Zelle.
 - **Rückmeldung `.toast`**: unten rechts, fixiert, damit sie auch nach dem
   Sprung zu einer Anmeldung sichtbar bleibt. Mit JavaScript wegklickbar.
 - **Als App**: Manifest „Naira Admin“, Icons aus der Wortmarke, `theme-color`

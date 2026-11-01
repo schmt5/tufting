@@ -817,6 +817,11 @@ a.cell-note:hover {
   white-space: pre-line;
 }
 
+/* Spaltenname in der Zelle — nur auf dem Handy, wo es keinen Tabellenkopf gibt. */
+.cell-label {
+  display: none;
+}
+
 /* Nach einer Aktion springt die Seite per Anker auf die Anmeldung. */
 .signup:target {
   background: var(--accent-soft);
@@ -842,6 +847,97 @@ a.cell-note:hover {
   display: contents;
 }
 
+/* Auf dem Handy eine Karte pro Anmeldung statt Tabelle, ohne seitliches
+   Scrollen: Name und Status oben, darunter Personen und Datum, die Bemerkung,
+   zuletzt die Knöpfe. */
+@media (max-width: 860px) {
+  .table-wrap {
+    margin-inline: 0;
+    overflow: visible;
+  }
+
+  .table,
+  .table tbody {
+    display: block;
+  }
+
+  .table thead {
+    display: none;
+  }
+
+  .table tr.signup {
+    display: grid;
+    /* Drei Spalten, damit der Name neben der schmalen Marke steht und nicht
+       neben dem breiteren Datum. */
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'who who state'
+      'persons created created'
+      'comment comment comment'
+      'actions actions actions';
+    gap: 0.6rem 1rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+  }
+
+  .table tr.signup + tr.signup {
+    margin-top: 0.75rem;
+  }
+
+  .table tbody tr:hover {
+    background: none;
+  }
+
+  .table tr.signup > td {
+    padding: 0;
+    border: 0;
+  }
+
+  .signup__who {
+    grid-area: who;
+    overflow-wrap: break-word;
+  }
+
+  .signup__state {
+    grid-area: state;
+    text-align: right;
+  }
+
+  .table .signup__persons {
+    grid-area: persons;
+    text-align: left;
+  }
+
+  .signup__created {
+    grid-area: created;
+    text-align: right;
+  }
+
+  .signup__comment {
+    grid-area: comment;
+    max-width: none;
+  }
+
+  .signup__comment--empty {
+    display: none;
+  }
+
+  .signup__actions {
+    grid-area: actions;
+  }
+
+  .row-actions {
+    flex-wrap: wrap;
+  }
+
+  .cell-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+}
+
 /* --- Menü „⋮“ -------------------------------------------------------------- */
 
 .menu {
@@ -864,7 +960,7 @@ a.cell-note:hover {
 .menu__panel {
   position: absolute;
   top: calc(100% + 0.25rem);
-  right: 0;
+  left: 0;
   z-index: 5;
   display: grid;
   min-width: 13rem;

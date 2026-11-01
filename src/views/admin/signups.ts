@@ -7,7 +7,8 @@ import { timestamp } from './format.ts'
 /**
  * Anmeldungen als Tabelle, für den Eingang und für einen Termin. Pro Zeile
  * die Hauptaktionen sichtbar (Einladung, schreiben, erledigt), die seltenen im
- * Menü „⋮“ ganz links.
+ * Menü „⋮“ ganz links. Auf dem Handy wird jede Zeile per CSS zur Karte; die
+ * Spaltennamen stehen dann als `.cell-label` in der Zelle selbst.
  */
 
 /** Was Naira braucht, um einer Person zu schreiben. */
@@ -146,18 +147,20 @@ function row(signup: SignupRow, context: MailContext, view: SignupView): Html {
   const info = context.get(signup.id)
 
   return html`<tr class="signup${active ? '' : ' signup--cancelled'}" id="anmeldung-${signup.id}">
-      <td>
+      <td class="signup__who">
         <span class="signup__name">${signup.first_name} ${signup.last_name}</span>
         <a class="cell-note" href="mailto:${signup.email}">${signup.email}</a>
       </td>
-      <td class="num">${signup.persons}</td>
-      <td class="signup__comment">${signup.comment ?? html`<span class="muted">–</span>`}</td>
-      <td class="nowrap">
-        ${timestamp(signup.created_at)}
+      <td class="num signup__persons"><span class="cell-label">Personen</span> ${signup.persons}</td>
+      <!-- pre-line: kein Leerraum um den Text, sonst stünde er als Leerzeile da. -->
+      <td class="signup__comment${signup.comment ? '' : ' signup__comment--empty'}">${signup.comment ??
+        html`<span class="muted">–</span>`}</td>
+      <td class="nowrap signup__created">
+        <span class="cell-label">Angemeldet</span> ${timestamp(signup.created_at)}
         ${signup.source === 'admin' ? html`<span class="cell-note">von Hand erfasst</span>` : ''}
       </td>
-      <td class="nowrap">${state(signup)}</td>
-      <td>
+      <td class="nowrap signup__state">${state(signup)}</td>
+      <td class="signup__actions">
         <div class="row-actions">
           ${menu(signup, info, view)} ${active && info ? mailButtons(signup, info) : ''}
           ${active && !signup.contacted_at
