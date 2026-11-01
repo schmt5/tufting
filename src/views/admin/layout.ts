@@ -4,19 +4,53 @@ import type { Html } from '../layout.ts'
 
 /**
  * Skeleton des Admins. Eigenes statt das der öffentlichen Seite: kein Open
- * Graph, kein JSON-LD, keine Ankerlinks — dafür die Navigation des Admins und
- * der Logout. Dasselbe Stylesheet, damit Admin und Seite gleich aussehen.
+ * Graph, kein JSON-LD, keine Ankerlinks — dafür die Leiste des Admins und der
+ * Logout. Auch ein eigenes Stylesheet: der Admin ist ein Werkzeug für den
+ * Laptop und folgt nicht der Formensprache der Seite (DESIGN_GUIDE.md §6).
  *
  * noindex steht zusätzlich als Header (X-Robots-Tag, siehe admin.ts), damit
  * es auch für Antworten gilt, die kein HTML sind.
  */
 
+export type AdminSection = 'termine' | 'vorlage' | 'mitteilungen'
+
 export interface AdminLayoutOptions {
   title: string
   /** Kurze Rückmeldung nach einer Aktion, z.B. „Termin gespeichert.“ */
   flash?: string | null
-  /** Ohne Session: kein Menü, kein Logout. */
+  /** Ohne Session: keine Leiste, kein Logout. */
   signedIn: boolean
+  /** Der Menüpunkt, der hervorgehoben wird. */
+  current?: AdminSection
+  /** Anmeldungen, denen Naira noch nicht geschrieben hat — als Zahl am Menüpunkt. */
+  newTotal?: number
+}
+
+const SECTIONS: { key: AdminSection; href: string; label: string }[] = [
+  { key: 'termine', href: '/admin', label: 'Termine' },
+  { key: 'vorlage', href: '/admin/vorlage', label: 'E-Mail-Vorlage' },
+  { key: 'mitteilungen', href: '/admin/mitteilungen', label: 'Mitteilungen' },
+]
+
+function navigation(options: AdminLayoutOptions): Html {
+  return html`<nav class="topbar__nav" aria-label="Admin">
+      <ul role="list">
+        ${SECTIONS.map(
+          (section) => html`<li>
+            <a
+              class="topbar__link"
+              href="${section.href}"${section.key === options.current ? html` aria-current="page"` : ''}
+              >${section.label}${section.key === 'termine' && options.newTotal
+                ? html` <span class="count">${options.newTotal}<span class="visually-hidden"> neu</span></span>`
+                : ''}</a
+            >
+          </li>`,
+        )}
+      </ul>
+    </nav>
+    <form class="topbar__logout" method="post" action="/admin/logout">
+      <button class="topbar__link" type="submit">Abmelden</button>
+    </form>`
 }
 
 export function adminLayout(options: AdminLayoutOptions, content: Html | string): Html {
@@ -33,40 +67,30 @@ export function adminLayout(options: AdminLayoutOptions, content: Html | string)
         <link rel="manifest" href="/admin/manifest.webmanifest" />
         <link rel="apple-touch-icon" href="/admin/icon-180.png" />
         <meta name="apple-mobile-web-app-title" content="Naira Admin" />
-        <link rel="preload" href="/fonts/inter-latin-var.woff2" as="font" type="font/woff2" crossorigin />
-        <link rel="stylesheet" href="/style.css" />
+        <link rel="stylesheet" href="/admin/admin.css" />
       </head>
-      <body class="admin">
+      <body>
         <a class="skip-link" href="#inhalt">Zum Inhalt springen</a>
 
-        <header class="site-header">
-          <div class="wrap site-header__inner">
-            <a class="site-header__logo" href="/admin">${BUSINESS.name} · Admin</a>
-            ${options.signedIn
-              ? html`<nav aria-label="Admin">
-                  <ul class="nav" role="list">
-                    <li><a class="nav__link" href="/admin">Termine</a></li>
-                    <li><a class="nav__link" href="/admin/workshops/neu">Neuer Termin</a></li>
-                    <li><a class="nav__link" href="/admin/vorlage">Vorlage</a></li>
-                    <li><a class="nav__link" href="/admin/mitteilungen">Mitteilungen</a></li>
-                    <li>
-                      <form method="post" action="/admin/logout">
-                        <button class="nav__link nav__button" type="submit">Abmelden</button>
-                      </form>
-                    </li>
-                  </ul>
-                </nav>`
-              : ''}
-          </div>
+        <header class="topbar">
+          <a class="topbar__brand" href="/admin">${BUSINESS.name} <span>Admin</span></a>
+          ${options.signedIn ? navigation(options) : ''}
         </header>
 
-        <main id="inhalt" tabindex="-1">
-          <div class="wrap admin__main">
-            ${options.flash ? html`<p class="flash">${options.flash}</p>` : ''} ${content}
-          </div>
-        </main>
+        <main id="inhalt" tabindex="-1">${content}</main>
 
-        <!-- Service Worker und Push. Die Seiten funktionieren auch ohne. -->
+        <!-- Unten rechts, damit sie auch nach dem Sprung zu einer Anmeldung
+             sichtbar bleibt. Beim Laden schon da, deshalb ohne Live-Region. -->
+        ${options.flash
+          ? html`<div class="toast" data-toast>
+              <p>${options.flash}</p>
+              <button class="toast__close" type="button" aria-label="Meldung schliessen" data-toast-close hidden>
+                ×
+              </button>
+            </div>`
+          : ''}
+
+        <!-- Service Worker, Push, Teilen, Menüs. Die Seiten funktionieren auch ohne. -->
         <script type="module" src="/admin/admin.js"></script>
       </body>
     </html>`

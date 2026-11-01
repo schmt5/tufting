@@ -1,0 +1,1056 @@
+/*
+ * Stylesheet des Admins. Unabhängig von /style.css: der Admin ist ein
+ * Werkzeug für den Laptop, nicht Teil der Seite. Systemschrift, eine
+ * Akzentfarbe, Farbe für Zustände (DESIGN_GUIDE.md §6, „Admin“).
+ *
+ * Aufbau: Leiste oben, darunter Terminliste links und Inhalt rechts. Unter
+ * 860px stehen Liste und Inhalt untereinander.
+ */
+
+/* --- Tokens --------------------------------------------------------------- */
+
+:root {
+  color-scheme: light;
+
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --border: #e2e5ea;
+  --border-strong: #c9ced6;
+  --text: #1a1d23;
+  --muted: #5d6673;
+  --hover: #f0f2f5;
+
+  --accent: #2557d6;
+  --accent-hover: #1d47b3;
+  --accent-soft: #eaf0fd;
+  --on-accent: #ffffff;
+
+  /* Zustände: helle Fläche, dunkle Schrift aus derselben Farbe. */
+  --blue-bg: #e3ecfd;
+  --blue-text: #1c4bb8;
+  --green-bg: #e2f4e8;
+  --green-text: #1d6b3a;
+  --amber-bg: #fdf1d8;
+  --amber-text: #8a5300;
+  --red-bg: #fde6e6;
+  --red-text: #a32626;
+  --gray-bg: #eceef1;
+  --gray-text: #4c5560;
+
+  --radius: 6px;
+  --radius-lg: 10px;
+  --topbar-height: 3.5rem;
+  --sidebar-width: 20rem;
+
+  --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+/* --- Grundlagen ----------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body,
+h1,
+h2,
+h3,
+p,
+ul,
+dl,
+dd,
+figure {
+  margin: 0;
+}
+
+/* Sonst gewänne `display` von .button & Co. — und die Buttons, die admin.js
+   erst zeigt, wo sie gehen, wären immer da. */
+[hidden] {
+  display: none !important;
+}
+
+ul[role='list'] {
+  padding: 0;
+  list-style: none;
+}
+
+body {
+  min-height: 100vh;
+  font-family: var(--font);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--accent);
+}
+
+code {
+  font-family: var(--mono);
+  font-size: 0.875em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+main:focus {
+  outline: none;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.skip-link {
+  position: absolute;
+  top: -10rem;
+  left: 1rem;
+  z-index: 100;
+  padding: 0.5rem 1rem;
+  color: var(--on-accent);
+  background: var(--accent);
+  border-radius: var(--radius);
+}
+
+.skip-link:focus {
+  top: 0.5rem;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+/* --- Leiste oben ---------------------------------------------------------- */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  height: var(--topbar-height);
+  padding-inline: 1.25rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar__brand {
+  font-weight: 650;
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.topbar__brand span {
+  margin-left: 0.25rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.topbar__nav ul {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.topbar__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  font: inherit;
+  color: var(--muted);
+  text-decoration: none;
+  background: none;
+  border: 0;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.topbar__link:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.topbar__link[aria-current='page'] {
+  font-weight: 600;
+  color: var(--text);
+  background: var(--hover);
+}
+
+.topbar__logout {
+  margin-left: auto;
+}
+
+/* Zahl der offenen Anmeldungen, in Leiste und Liste. */
+.count {
+  min-width: 1.4rem;
+  padding: 0 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.4rem;
+  text-align: center;
+  color: var(--on-accent);
+  background: var(--accent);
+  border-radius: 999px;
+}
+
+/* --- Liste links, Inhalt rechts ------------------------------------------- */
+
+.split {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  min-height: calc(100vh - var(--topbar-height));
+}
+
+.sidebar {
+  position: sticky;
+  top: var(--topbar-height);
+  height: calc(100vh - var(--topbar-height));
+  padding: 1rem 0.75rem 2rem;
+  overflow-y: auto;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+
+.inbox-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 0.75rem;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+  border-radius: var(--radius);
+}
+
+.inbox-link:hover {
+  background: var(--hover);
+}
+
+.inbox-link[aria-current='page'] {
+  background: var(--accent-soft);
+}
+
+.inbox-link__done {
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.sidebar__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 1.25rem 0 0.5rem;
+  padding: 0 0.25rem 0 0.75rem;
+}
+
+.sidebar__title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sidebar__empty {
+  padding: 0.5rem 0.75rem;
+}
+
+.sidebar__past {
+  margin-top: 1rem;
+}
+
+.sidebar__past > summary {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.slots {
+  display: grid;
+  gap: 2px;
+}
+
+/* Ein Termin in der Liste: die ganze Zeile ist der Link. */
+.slot {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.15rem 0.5rem;
+  padding: 0.65rem 0.75rem;
+  color: var(--text);
+  text-decoration: none;
+  border-radius: var(--radius);
+}
+
+.slot:hover {
+  background: var(--hover);
+}
+
+.slot[aria-current='page'] {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.slot__date {
+  font-weight: 600;
+}
+
+.slot__badges {
+  display: flex;
+  gap: 0.25rem;
+  justify-content: flex-end;
+}
+
+.slot__meta {
+  grid-column: 1 / -1;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.slot .seats-bar {
+  grid-column: 1 / -1;
+  margin-top: 0.3rem;
+}
+
+.detail {
+  padding: 2rem 2.5rem 4rem;
+}
+
+.detail > * + *,
+.page > * + * {
+  margin-top: 1.5rem;
+}
+
+/* Seiten ohne Terminliste: Vorlage, Mitteilungen. */
+.page {
+  max-width: 76rem;
+  padding: 2rem 2.5rem 4rem;
+}
+
+.page--narrow {
+  max-width: 48rem;
+}
+
+@media (max-width: 860px) {
+  .topbar {
+    gap: 0.75rem;
+    padding-inline: 0.75rem;
+    overflow-x: auto;
+  }
+
+  .topbar__brand span {
+    display: none;
+  }
+
+  .split {
+    display: block;
+  }
+
+  .sidebar {
+    position: static;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .detail,
+  .page {
+    padding: 1.25rem 1rem 3rem;
+  }
+
+  .topbar__link {
+    white-space: nowrap;
+  }
+}
+
+/* --- Kopf, Kennzahlen, Panels --------------------------------------------- */
+
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.detail__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.detail__head p {
+  max-width: 60ch;
+  margin-top: 0.35rem;
+}
+
+.detail__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.75rem;
+}
+
+.stat {
+  padding: 0.85rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.stat dt {
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.stat dd {
+  margin-top: 0.15rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.stat .seats-bar {
+  margin-top: 0.5rem;
+}
+
+.stat--new {
+  background: var(--blue-bg);
+  border-color: transparent;
+}
+
+.stat--new dt,
+.stat--new dd {
+  color: var(--blue-text);
+}
+
+.panel {
+  padding: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.panel > * + * {
+  margin-top: 1rem;
+}
+
+.panel__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.panel__head > form:last-child {
+  margin-left: auto;
+}
+
+.panel__title {
+  font-size: 1.0625rem;
+  font-weight: 650;
+}
+
+.panel__title a {
+  color: inherit;
+}
+
+.panel__empty {
+  padding: 0.5rem 0;
+}
+
+.empty {
+  max-width: 36rem;
+  padding: 4rem 0;
+}
+
+.empty .muted {
+  margin-top: 0.5rem;
+}
+
+/* Vorlage: Formular links, Platzhalter und Vorschau rechts. */
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.stack > * + * {
+  margin-top: 1.5rem;
+}
+
+@media (max-width: 1100px) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* --- Marken und Balken ---------------------------------------------------- */
+
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  border-radius: 999px;
+}
+
+.badge--new {
+  color: var(--blue-text);
+  background: var(--blue-bg);
+}
+
+.badge--published,
+.badge--done,
+.badge--full {
+  color: var(--green-text);
+  background: var(--green-bg);
+}
+
+.badge--draft {
+  color: var(--amber-text);
+  background: var(--amber-bg);
+}
+
+.badge--cancelled {
+  color: var(--red-text);
+  background: var(--red-bg);
+}
+
+.badge--cancelled-signup {
+  color: var(--gray-text);
+  background: var(--gray-bg);
+}
+
+/* Belegung: --belegt kommt als Prozentwert aus dem Markup. */
+.seats-bar {
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  background: var(--gray-bg);
+  border-radius: 2px;
+}
+
+.seats-bar::before {
+  content: '';
+  display: block;
+  width: var(--belegt, 0%);
+  height: 100%;
+  background: var(--accent);
+}
+
+.seats-bar--full::before {
+  background: var(--green-text);
+}
+
+/* --- Meldungen ------------------------------------------------------------ */
+
+.alert {
+  padding: 0.75rem 1rem;
+  color: var(--gray-text);
+  background: var(--gray-bg);
+  border-radius: var(--radius);
+}
+
+.alert--warning {
+  color: var(--amber-text);
+  background: var(--amber-bg);
+}
+
+.alert--danger {
+  color: var(--red-text);
+  background: var(--red-bg);
+}
+
+.hint {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+/* Rückmeldung nach einer Aktion, unten rechts über allem. */
+.toast {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  max-width: 28rem;
+  padding: 0.75rem 0.75rem 0.75rem 1rem;
+  color: #ffffff;
+  background: #1f2329;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+}
+
+.toast__close {
+  padding: 0 0.4rem;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.toast__close:hover {
+  opacity: 1;
+}
+
+/* --- Buttons -------------------------------------------------------------- */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 2.25rem;
+  padding: 0.4rem 0.9rem;
+  font: inherit;
+  font-weight: 550;
+  line-height: 1.2;
+  color: var(--on-accent);
+  text-decoration: none;
+  white-space: nowrap;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.button:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.button--small {
+  min-height: 1.9rem;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.8125rem;
+}
+
+.button--secondary {
+  color: var(--text);
+  background: var(--surface);
+  border-color: var(--border-strong);
+}
+
+.button--secondary:hover {
+  background: var(--hover);
+  border-color: var(--border-strong);
+}
+
+.button--ghost {
+  color: var(--muted);
+  background: transparent;
+  border-color: transparent;
+}
+
+.button--ghost:hover {
+  color: var(--text);
+  background: var(--hover);
+  border-color: transparent;
+}
+
+.button--danger {
+  background: var(--red-text);
+  border-color: var(--red-text);
+}
+
+.button--danger:hover {
+  background: #861e1e;
+  border-color: #861e1e;
+}
+
+/* --- Tabelle der Anmeldungen ---------------------------------------------- */
+
+/* position, damit die .visually-hidden-Texte in der Tabelle hier verankert
+   sind und nicht am Viewport — sonst machen sie die Seite auf dem Handy
+   breiter, am Scrollen der Tabelle vorbei. */
+.table-wrap {
+  position: relative;
+  margin-inline: -1.25rem;
+}
+
+/* Erst auf schmalen Bildschirmen scrollt die Tabelle seitlich. Breiter darf
+   sie nicht: overflow schnitte das Menü „⋯“ ab. */
+@media (max-width: 1100px) {
+  .table-wrap {
+    overflow-x: auto;
+  }
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: left;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.table td {
+  padding: 0.75rem;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+
+.table th:first-child,
+.table td:first-child {
+  padding-left: 1.25rem;
+}
+
+.table th:last-child,
+.table td:last-child {
+  padding-right: 1.25rem;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.table tbody tr:hover {
+  background: #fafbfc;
+}
+
+.table .num {
+  text-align: right;
+}
+
+.cell-end {
+  text-align: right;
+}
+
+.cell-note {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+a.cell-note {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+a.cell-note:hover {
+  text-decoration: underline;
+}
+
+a.cell-note:hover {
+  color: var(--accent);
+}
+
+.signup__name {
+  font-weight: 600;
+}
+
+.signup__comment {
+  max-width: 22rem;
+  white-space: pre-line;
+}
+
+/* Nach einer Aktion springt die Seite per Anker auf die Anmeldung. */
+.signup:target {
+  background: var(--accent-soft);
+}
+
+.signup--cancelled {
+  color: var(--muted);
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.mail-buttons {
+  display: contents;
+}
+
+/* --- Menü „⋯“ -------------------------------------------------------------- */
+
+.menu {
+  position: relative;
+}
+
+.menu > summary {
+  min-width: 2rem;
+  font-size: 1.1rem;
+  list-style: none;
+}
+
+.menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.menu[open] > summary {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.menu__panel {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  right: 0;
+  z-index: 5;
+  display: grid;
+  min-width: 13rem;
+  padding: 0.35rem;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+}
+
+.menu__item {
+  display: block;
+  width: 100%;
+  padding: 0.45rem 0.65rem;
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+  color: var(--text);
+  background: none;
+  border: 0;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.menu__item:hover {
+  background: var(--hover);
+}
+
+.menu__item--danger {
+  color: var(--red-text);
+}
+
+/* Löschen mit Zwischenschritt, im Menü. */
+.confirm > summary {
+  list-style: none;
+}
+
+.confirm > summary::-webkit-details-marker {
+  display: none;
+}
+
+.confirm__body {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.35rem 0.65rem 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+/* --- Aufklappbares --------------------------------------------------------- */
+
+.disclosure > summary {
+  width: fit-content;
+  font-weight: 550;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.disclosure > .form {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.disclosure--section {
+  padding: 1rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.disclosure--section > summary {
+  color: var(--muted);
+}
+
+.disclosure--section > .table-wrap {
+  margin-top: 0.75rem;
+}
+
+/* --- Formulare (Klassen aus src/views/fields.ts) -------------------------- */
+
+.form {
+  display: grid;
+  gap: 1.1rem;
+  max-width: 52rem;
+}
+
+.form.panel > * + * {
+  margin-top: 0;
+}
+
+.form__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 1rem;
+  align-items: end;
+}
+
+.form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.field__label {
+  padding: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.field__hint {
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.field__error {
+  font-size: 0.8125rem;
+  font-weight: 550;
+  color: var(--red-text);
+}
+
+.field__control {
+  width: 100%;
+  min-height: 2.4rem;
+  padding: 0.45rem 0.65rem;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+}
+
+.field__control:focus {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 0;
+}
+
+.field__control[aria-invalid='true'] {
+  border-color: var(--red-text);
+}
+
+textarea.field__control {
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.2rem 0;
+  cursor: pointer;
+}
+
+.choice input {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+/* --- Login --------------------------------------------------------------- */
+
+.login {
+  max-width: 24rem;
+  margin: 6rem auto 0;
+  padding: 2rem;
+}
+
+.login > * + * {
+  margin-top: 1.25rem;
+}
+
+/* --- Vorlage -------------------------------------------------------------- */
+
+.placeholders > li + li {
+  margin-top: 0.4rem;
+}
+
+.placeholders code {
+  padding: 0.1rem 0.35rem;
+  background: var(--gray-bg);
+  border-radius: 4px;
+}
+
+.mail-preview {
+  padding: 1rem;
+  background: var(--bg);
+  border-radius: var(--radius);
+}
+
+.mail-preview__subject {
+  font-weight: 600;
+}
+
+/* Die Zeilenumbrüche der Vorlage sind Absätze der Mail. */
+.mail-preview__body {
+  margin-top: 0.75rem;
+  white-space: pre-line;
+}
+
+/* --- Bewegung ------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

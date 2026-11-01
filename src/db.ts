@@ -324,6 +324,18 @@ export async function listSignups(db: D1Database, workshopId: string): Promise<S
   return results
 }
 
+/** Admin, Eingang: alle Anmeldungen, denen Naira noch nicht geschrieben hat, älteste zuerst. */
+export async function listNewSignups(db: D1Database): Promise<SignupRow[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT * FROM signups WHERE contacted_at IS NULL AND cancelled_at IS NULL
+       ORDER BY created_at, id`,
+    )
+    .all<SignupRow>()
+
+  return results
+}
+
 export async function getSignup(db: D1Database, id: string): Promise<SignupRow | null> {
   return db.prepare('SELECT * FROM signups WHERE id = ?1').bind(id).first<SignupRow>()
 }

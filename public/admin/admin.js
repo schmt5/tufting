@@ -19,6 +19,50 @@ if (root) setupPush(root)
 
 for (const button of document.querySelectorAll('[data-copy]')) setupCopy(button)
 for (const button of document.querySelectorAll('[data-invite]')) setupInvite(button)
+setupMenus()
+setupToast()
+
+/**
+ * Die Menüs „⋯“ sind <details> und gehen auch ohne Script auf und zu. Hier
+ * nur, was ein Menü sonst noch tut: ein Klick daneben oder Escape schliesst
+ * es, und es ist immer nur eines offen.
+ */
+function setupMenus() {
+  const menus = [...document.querySelectorAll('[data-menu]')]
+  if (menus.length === 0) return
+
+  const closeAll = (except) => {
+    for (const menu of menus) if (menu !== except) menu.open = false
+  }
+
+  for (const menu of menus) {
+    menu.addEventListener('toggle', () => {
+      if (menu.open) closeAll(menu)
+    })
+  }
+
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('[data-menu]')) closeAll()
+  })
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return
+    const open = menus.find((menu) => menu.open)
+    if (!open) return
+    open.open = false
+    open.querySelector('summary')?.focus()
+  })
+}
+
+/** Die Rückmeldung unten rechts lässt sich wegklicken. */
+function setupToast() {
+  const toast = document.querySelector('[data-toast]')
+  const close = toast?.querySelector('[data-toast-close]')
+  if (!close) return
+
+  close.hidden = false
+  close.addEventListener('click', () => toast.remove())
+}
 
 /** Kurze Rückmeldung auf dem Button selbst, danach wieder der alte Text. */
 function flashButton(button, text) {

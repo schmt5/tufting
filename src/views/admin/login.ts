@@ -15,15 +15,15 @@ export interface LoginViewOptions {
  */
 export function renderLogin(options: LoginViewOptions = {}): Html {
   if (options.lockedMinutes) {
-    return html`<div class="prose prose--narrow">
+    return html`<div class="login panel">
         <h1 class="page-title">Anmelden</h1>
-        <p class="field__error">
+        <p class="alert alert--danger">
           Zu viele Fehlversuche. Der Login ist für ${options.lockedMinutes} Minuten gesperrt.
         </p>
       </div>`
   }
 
-  return html`<div class="prose prose--narrow">
+  return html`<div class="login panel">
       <h1 class="page-title">Anmelden</h1>
       <form class="form" method="post" action="/admin/login">
         <input
@@ -44,14 +44,14 @@ export function renderLogin(options: LoginViewOptions = {}): Html {
           error: options.error,
           required: true,
         })}
-        <p><button class="button" type="submit">Anmelden</button></p>
+        <div class="form__actions"><button class="button" type="submit">Anmelden</button></div>
       </form>
     </div>`
 }
 
 /** Fehlen die Secrets, bleibt der Admin zu — und sagt, warum. */
 export function renderNotConfigured(): Html {
-  return html`<div class="prose prose--narrow">
+  return html`<div class="login panel">
       <h1 class="page-title">Admin nicht eingerichtet</h1>
       <p>
         Es fehlen die Secrets <code>ADMIN_PASSWORD</code> und <code>SESSION_SECRET</code>

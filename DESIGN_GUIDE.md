@@ -13,9 +13,10 @@ Die Seite hat eine Aufgabe: zeigen, was der Workshop ist und wann er
 stattfindet, und die Anmeldung öffnen. Jedes Element, das dieser Aufgabe nicht
 dient, kommt weg.
 
-Der Admin unter `/admin` (§6, „Admin“) folgt denselben Regeln. Er ist ein
-Werkzeug für eine Person auf dem Handy und bekommt nur dort Ausnahmen, wo §6
-sie ausdrücklich nennt.
+Der Admin unter `/admin` (§6, „Admin“) ist davon ausgenommen. Er ist ein
+Werkzeug für eine Person am Laptop, kein Teil der Seite, und hat ein eigenes
+Stylesheet mit eigenen Regeln. Die Regeln hier und die Verbote in §8 gelten
+für ihn nicht.
 
 Der Entwurf, aus dem die Inhalte stammen, arbeitet mit rosa Flächen,
 Handschrift und gerundeten Ecken. Das ist bewusst nicht übernommen: aus dem
@@ -256,14 +257,10 @@ Platz ist eine Information.
 Die einzige Fläche der Seite: `--ink` gefüllt, Text `--paper`, Gewicht 500,
 keine Rundung, `1px`-Rahmen in `--ink`.
 
-- Eine Klasse für alle Buttons — den Anmelde-Button der Card, „Schreibe mir“
-  und die Buttons im Admin. `.card__cta` trägt nur noch das `margin-top: auto`,
-  das die Buttons einer Grid-Zeile auf eine Höhe bringt.
-- `.button--secondary`: Rahmen statt Fläche, für die zweitrangige Aktion neben
-  einer Hauptaktion (im Admin: Kopieren, Stornieren, Bearbeiten). Hover füllt
-  sie schwarz — die Umkehrung des Hauptbuttons.
-- `.button--small`: Kleinschrift und weniger Innenabstand, für Reihen von
-  Aktionen auf einer Anmeldung. Die Mindesthöhe von 44px bleibt.
+- Eine Klasse für alle Buttons — den Anmelde-Button der Card und „Schreibe
+  mir“. `.card__cta` trägt nur noch das `margin-top: auto`, das die Buttons
+  einer Grid-Zeile auf eine Höhe bringt. Die Buttons des Admins sind eigene
+  (§6, „Admin“).
 - Hover invertiert (weisse Fläche, schwarzer Text) — der Rahmen liegt schon
   vorher da, deshalb springt beim Wechsel nichts.
 - Hover-Regeln nur in `@media (hover: hover)`, sonst bleibt der Zustand auf
@@ -327,39 +324,40 @@ nach Erfolg ein Redirect (Post/Redirect/Get).
 
 ### Admin
 
-Derselbe Seitenkopf mit eigener Navigation (Termine, Neuer Termin, Vorlage,
-Mitteilungen, Abmelden), dasselbe Stylesheet, kein Footer. Inhalt in
-`.admin__main` mit `--space-6` zwischen den Blöcken.
+Eigenes Stylesheet `public/admin/admin.css`, unabhängig von `style.css`. Ziel
+ist ein übersichtliches Werkzeug für den Laptop (ab ~1280px), nicht die Form
+der Seite: Systemschrift, graue Fläche mit weissen Panels, leichte Rundungen,
+eine Akzentfarbe (Blau) für Links und Hauptbuttons. Auf dem Handy bleibt alles
+bedienbar, ist aber nicht darauf optimiert.
 
-- **Rückmeldung `.flash`**: ein Satz in einem `1px`-Rahmen nach einer Aktion
-  („Termin gespeichert.“). Beim Laden schon da, ohne Live-Region.
-- **Liste `.admin-list` / `.admin-row`**: Termine als Zeilen mit Haarlinie
-  `--rule` dazwischen. Datum fett, dahinter Zeit und Belegung in `--ink-muted`,
-  rechts die Zustände. **Ausnahme von §8:** die ganze Zeile ist klickbar — über
-  einen einzigen Link auf dem Datum, dessen Fläche ein `::after` über die Zeile
-  zieht. Auf dem Handy wäre das Datum allein ein zu kleines Ziel; ein
-  Screenreader liest trotzdem einen Link pro Termin.
-- **Zustand `.tag`**: Kleinschrift im Rahmen `--ink-muted` („Entwurf“,
-  „Storniert …“). `.tag--strong` ist gefüllt und steht nur für „Neu“ — das,
-  worauf Naira reagieren muss. Das Wort trägt die Bedeutung, die Fläche
-  verstärkt sie nur.
-- **Anmeldung `.signup`**: ein Kasten wie die Card. Name als `h3`, Zustand
-  rechts, darunter Personen, E-Mail und Zeitpunkt in `--ink-muted`, dann die
-  Aktionen in `.actions`. Nach einer Aktion springt die Seite per Anker auf die
-  Anmeldung, `:target` bekommt einen `2px`-Umriss.
-- **Löschen `.confirm`**: ein `<details>`, dessen `<summary>` wie ein kleiner
-  Button aussieht; der eigentliche „Endgültig löschen“-Button steht darin.
-  Ein Schritt mehr ohne JavaScript, anders als `confirm()`.
-- **Schreiben**: pro Anmeldung „Mail mit Kalender“ (Hauptbutton, Einladung als
-  Anhang über das Teilen-Menü), „E-Mail schreiben“ (mailto) und „Text
-  kopieren“. Wo das Gerät keine Dateien teilen kann, fehlt der erste, und
-  „E-Mail schreiben“ ist der Hauptbutton. Darüber ein `.note`, dass die Adresse
-  in der Zwischenablage liegt.
-- **Vorlage**: `.placeholders` listet die Platzhalter, `.mail-preview` zeigt
-  die ausgefüllte Mail in einem Rahmen `--rule`, Zeilenumbrüche wie in der
-  Mail (`white-space: pre-line`).
-- **Als App**: Manifest „Naira Admin“, Icons aus der Wortmarke (bis ein Logo
-  kommt), `theme-color` weiss.
+- **Aufbau**: Leiste oben (Termine mit der Zahl offener Anmeldungen,
+  E-Mail-Vorlage, Mitteilungen, Abmelden). Darunter bei allem rund um Termine
+  zwei Spalten wie ein Mail-Programm: links die Terminliste `.sidebar`
+  (sticky, eigenes Scrollen), rechts der Inhalt `.detail`. Jede Ansicht ist
+  eine eigene Adresse, die Liste kommt mit jeder Seite vom Server — kein
+  JavaScript nötig. Unter `860px` steht die Liste über dem Inhalt. Vorlage und
+  Mitteilungen haben die ganze Breite (`.page`).
+- **Startseite `/admin` = Eingang**: alle Anmeldungen, denen Naira noch nicht
+  geschrieben hat, nach Termin gruppiert. Das ist, was nach dem Login zu tun
+  ist. „Erledigt“ nimmt eine Anmeldung aus dem Eingang.
+- **Terminliste `.slot`**: Datum, Zeit, „x von y belegt“ und ein Balken
+  `.seats-bar`; rechts die Marken. Die ganze Zeile ist der Link, der gewählte
+  Termin ist blau hinterlegt (`aria-current`). Vergangene Termine zugeklappt.
+- **Farbe für Zustände `.badge`**: Neu blau, Veröffentlicht / Voll /
+  Geschrieben grün, Entwurf gelb, Abgesagt rot, Storniert grau. Das Wort steht
+  immer da, die Farbe hilft nur beim Überfliegen.
+- **Termin**: Kopf mit Datum, Marken und „Bearbeiten“; darunter Kennzahlen
+  `.stats` (Zeit, Belegt, Frei, Noch zu beantworten). Die Anmeldungen als
+  Tabelle `.table`, neue zuerst; stornierte zugeklappt darunter. Bearbeiten und
+  „Neuer Termin“ öffnen sich rechts, die Liste bleibt stehen.
+- **Aktionen pro Anmeldung**: sichtbar „E-Mail schreiben“ (bzw. „Mail mit
+  Kalender“, wo das Gerät Dateien teilen kann) und „Erledigt“. Seltenes im Menü
+  „⋯“ `.menu` — ein `<details>`, geht ohne JavaScript; `admin.js` schliesst es
+  bei Klick daneben und Escape. Löschen darin mit Zwischenschritt `.confirm`.
+- **Rückmeldung `.toast`**: unten rechts, fixiert, damit sie auch nach dem
+  Sprung zu einer Anmeldung sichtbar bleibt. Mit JavaScript wegklickbar.
+- **Als App**: Manifest „Naira Admin“, Icons aus der Wortmarke, `theme-color`
+  weiss.
 
 ### Über mich `.about`
 
@@ -507,7 +505,7 @@ Zwei Punkte, die man dabei kennen muss:
   lesbar, inklusive Galerie. Script gibt es nur dort, wo die Plattform es
   verlangt: das Turnstile-Widget auf der
   eigenen Anmeldeseite und im Admin `admin.js` für Service Worker, Push,
-  Kopieren und Teilen. Was ein Script erst freischaltet, steht mit `hidden` im
+  Kopieren, Teilen und das Schliessen der Menüs. Was ein Script erst freischaltet, steht mit `hidden` im
   HTML und wird nur gezeigt, wo es auch geht.
 - **`[hidden]` gewinnt immer** (`display: none !important` in der Basis). Sonst
   zeigt eine Klasse mit `display`, wie `.button`, ein Element, das versteckt
@@ -553,8 +551,7 @@ Diese Liste existiert, damit „nur dieses eine Mal“ nicht passiert:
 - JavaScript für Layout oder Interaktion — Ausnahmen sind nur die in §7
   genannten (Turnstile, `admin.js`); das Carousel kommt ohne aus
 - Icons ohne Textentsprechung
-- klickbare Cards, Hover-Effekte auf ganzen Blöcken — einzige Ausnahme sind
-  die Terminzeilen im Admin (§6)
+- klickbare Cards, Hover-Effekte auf ganzen Blöcken
 - Autoplay in der Galerie
 - Grauwerte unter 4.5:1, wenn es Text ist
 - Inline-`style`-Attribute im Markup
@@ -566,6 +563,7 @@ Diese Liste existiert, damit „nur dieses eine Mal“ nicht passiert:
 |---|---|
 | `DESIGN_GUIDE.md` | dieses Dokument — die Entscheidungen |
 | `public/style.css` | Tokens und Regeln, gliedert sich nach §2–6 |
+| `public/admin/admin.css` | Stylesheet des Admins, unabhängig von `style.css` (§6) |
 | `public/admin/admin.js` | Admin: Service Worker registrieren, Push aktivieren, Kopieren, Teilen |
 | `public/admin-sw.js` | Service Worker des Admins: Mitteilungen anzeigen und öffnen |
 | `public/admin/manifest.webmanifest` | Admin als App, mit `icon-180/192/512.png` aus der Wortmarke |
@@ -583,7 +581,7 @@ Diese Liste existiert, damit „nur dieses eine Mal“ nicht passiert:
 | `src/views/card.ts` | Card-Markup und Zustandslogik |
 | `src/views/signup.ts` | Anmeldeseite mit Formular, Danke-Seite |
 | `src/views/fields.ts` | Formularfelder mit Label, Hinweis und Fehlermeldung |
-| `src/views/admin/` | Admin: Layout, Login, Übersicht, Termin, Vorlage, Mitteilungen |
+| `src/views/admin/` | Admin: Layout, Login, Liste und Eingang, Termin, Anmeldungstabelle, Vorlage, Mitteilungen |
 | `src/views/about.ts` | Section „Ich bin Naira" |
 | `src/views/legal.ts` | Impressum, Datenschutz, 404 — `.prose--narrow` |
 

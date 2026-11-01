@@ -261,6 +261,25 @@ describe('Termine', () => {
     assert.match(text, /2 von 4 belegt/)
     assert.match(text, /1 neu/)
   })
+
+  it('zeigt im Eingang nur Anmeldungen, denen noch niemand geschrieben hat', async () => {
+    const cookie = await login()
+    const id = await createWorkshop(env.DB, workshopInput(4))
+    await insertSignup(env.DB, { workshop_id: id, first_name: 'Offen', last_name: 'B', email: 'a@b.ch', persons: 1, comment: null }, '2026-01-01')
+    await insertSignup(env.DB, { workshop_id: id, first_name: 'Erledigt', last_name: 'B', email: 'c@d.ch', persons: 1, comment: null }, '2026-01-01')
+    const done = (await listSignups(env.DB, id)).find((signup) => signup.first_name === 'Erledigt')
+    await request(`/admin/anmeldungen/${done?.id}/kontaktiert`, { form: {}, cookie })
+
+    const text = await (await request('/admin', { cookie })).text()
+    assert.match(text, /Neue Anmeldungen/)
+    assert.match(text, /Offen B/)
+    assert.doesNotMatch(text, /Erledigt B/)
+  })
+
+  it('sagt im leeren Eingang, dass alles beantwortet ist', async () => {
+    const text = await (await request('/admin', { cookie: await login() })).text()
+    assert.match(text, /Alles beantwortet/)
+  })
 })
 
 describe('Anmeldungen', () => {
@@ -310,6 +329,19 @@ describe('Anmeldungen', () => {
     const deleted = await request(`/admin/anmeldungen/${signup.id}/loeschen`, { form: {}, cookie })
     assert.match(deleted.headers.get('location') ?? '', /meldung=geloescht#anmeldungen$/)
     assert.equal(await getSignup(env.DB, signup.id), null)
+  })
+
+  it('führt aus dem Eingang zurück in den Eingang', async () => {
+    const { cookie, id } = await setup()
+    await request('/admin/anmeldungen', { form: signupForm(id), cookie })
+    const [signup] = await listSignups(env.DB, id)
+
+    const res = await request(`/admin/anmeldungen/${signup?.id}/kontaktiert`, { form: { ansicht: 'eingang' }, cookie })
+    assert.equal(res.headers.get('location'), `/admin?meldung=geschrieben#eingang-${id}`)
+
+    // Etwas anderes als „eingang“ führt wie bisher auf den Termin, nie anderswohin.
+    const other = await request(`/admin/anmeldungen/${signup?.id}/storniert`, { form: { ansicht: 'https://example.com' }, cookie })
+    assert.match(other.headers.get('location') ?? '', new RegExp(`^/admin/workshops/${id}\\?`))
   })
 
   it('kennt keine anderen Aktionen', async () => {

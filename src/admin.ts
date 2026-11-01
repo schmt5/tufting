@@ -33,6 +33,7 @@ import {
   getTemplate,
   getWorkshop,
   insertAdminSignup,
+  listNewSignups,
   listPastWorkshops,
   listPushSubscriptions,
   listSignups,
@@ -43,6 +44,7 @@ import {
   savePushSubscription,
   saveTemplate,
   updateWorkshop,
+  type SignupRow,
   type WorkshopWithSeats,
 } from './db.ts'
 import type { Env } from './env.ts'
@@ -68,18 +70,14 @@ import {
   unknownPlaceholders,
 } from './template.ts'
 import { weekdayDate } from './views/admin/format.ts'
-import { adminLayout } from './views/admin/layout.ts'
+import { type AdminSection, adminLayout } from './views/admin/layout.ts'
 import { signupPath } from './views/signup.ts'
 import { renderNotifications } from './views/admin/notifications.ts'
 import { renderTemplateForm } from './views/admin/template.ts'
 import { renderLogin, renderNotConfigured } from './views/admin/login.ts'
-import { renderOverview, workshopPath } from './views/admin/overview.ts'
-import {
-  type MailContext,
-  type ManualSignupOptions,
-  renderWorkshop,
-  renderWorkshopForm,
-} from './views/admin/workshop.ts'
+import { type InboxGroup, renderInbox, renderSplit, type Selection, workshopPath } from './views/admin/overview.ts'
+import type { MailContext } from './views/admin/signups.ts'
+import { type ManualSignupOptions, renderWorkshop, renderWorkshopForm } from './views/admin/workshop.ts'
 import type { Html } from './views/layout.ts'
 import { todayInZurich } from './workshops.ts'
 
@@ -114,12 +112,48 @@ function flash(c: AdminContext): string | null {
   return FLASH[c.req.query('meldung') ?? ''] ?? null
 }
 
-function page(c: AdminContext, title: string, content: Html, status: 200 | 401 | 404 | 409 | 422 | 429 | 503 = 200) {
-  return c.html(adminLayout({ title, flash: flash(c), signedIn: c.req.path !== LOGIN_PATH }, content), status)
+type Status = 200 | 401 | 404 | 409 | 422 | 429 | 503
+
+/** Der Menüpunkt zur Adresse. Alles rund um Termine und Anmeldungen ist „Termine“. */
+function section(path: string): AdminSection {
+  if (path.startsWith('/admin/vorlage')) return 'vorlage'
+  if (path.startsWith('/admin/mitteilungen')) return 'mitteilungen'
+  return 'termine'
+}
+
+function total(counts: Map<string, number>): number {
+  return [...counts.values()].reduce((sum, count) => sum + count, 0)
+}
+
+/**
+ * Eine Seite des Admins. Eingeloggt zeigt die Leiste oben, wie viele
+ * Anmeldungen noch auf Antwort warten — dafür die Zahlen mitgeben, wo sie
+ * schon geladen sind, sonst holt page() sie selbst.
+ */
+async function page(c: AdminContext, title: string, content: Html, status: Status = 200, newCounts?: Map<string, number>) {
+  const signedIn = c.req.path !== LOGIN_PATH
+  const counts = signedIn ? (newCounts ?? (await countNewSignups(c.env.DB))) : new Map<string, number>()
+
+  return c.html(
+    adminLayout({ title, flash: flash(c), signedIn, current: section(c.req.path), newTotal: total(counts) }, content),
+    status,
+  )
+}
+
+/** Eine Seite mit der Terminliste links und `detail` rechts. */
+async function splitPage(c: AdminContext, title: string, selected: Selection, detail: Html, status: Status = 200) {
+  const today = todayInZurich()
+  const [upcoming, past, newCounts] = await Promise.all([
+    listUpcomingWorkshops(c.env.DB, today),
+    listPastWorkshops(c.env.DB, today, PAST_LIMIT),
+    countNewSignups(c.env.DB),
+  ])
+
+  return page(c, title, renderSplit({ upcoming, past, newCounts, selected }, detail), status, newCounts)
 }
 
 function notFound(c: AdminContext) {
-  return page(c, 'Nicht gefunden', html`<p class="note">Diesen Eintrag gibt es nicht (mehr).</p>`, 404)
+  return page(c, 'Nicht gefunden', html`<div class="page empty"><p class="muted">Diesen Eintrag gibt es nicht (mehr).</p></div>`, 404)
 }
 
 const admin = new Hono<{ Bindings: Env }>()
@@ -199,15 +233,34 @@ admin.post('/logout', (c) => {
   return c.redirect(LOGIN_PATH, 303)
 })
 
-admin.get('/', async (c) => {
-  const today = todayInZurich()
-  const [upcoming, past, newCounts] = await Promise.all([
-    listUpcomingWorkshops(c.env.DB, today),
-    listPastWorkshops(c.env.DB, today, PAST_LIMIT),
-    countNewSignups(c.env.DB),
-  ])
+/** Die ausgefüllte Vorlage für jede Anmeldung, mit ihrem Termin. */
+function mailContext(c: AdminContext, template: Template, entries: { workshop: WorkshopWithSeats; signups: SignupRow[] }[]): MailContext {
+  const origin = originOf(c.req.url)
 
-  return page(c, 'Termine', renderOverview(upcoming, past, newCounts))
+  return new Map(
+    entries.flatMap(({ workshop, signups }) =>
+      signups.map((signup) => [
+        signup.id,
+        { mail: signupMail(template, workshop, signup, origin), inviteFilename: inviteFilename(workshop.date) },
+      ]),
+    ),
+  )
+}
+
+/** Startseite: der Eingang mit allen Anmeldungen, die noch auf Antwort warten. */
+admin.get('/', async (c) => {
+  const [signups, template] = await Promise.all([listNewSignups(c.env.DB), currentTemplate(c.env.DB)])
+
+  const ids = [...new Set(signups.map((signup) => signup.workshop_id))]
+  const workshops = (await Promise.all(ids.map((id) => getWorkshop(c.env.DB, id)))).filter(
+    (workshop): workshop is WorkshopWithSeats => workshop !== null,
+  )
+
+  const groups: InboxGroup[] = workshops
+    .sort((a, b) => a.date.localeCompare(b.date) || a.start_time.localeCompare(b.start_time))
+    .map((workshop) => ({ workshop, signups: signups.filter((signup) => signup.workshop_id === workshop.id) }))
+
+  return splitPage(c, 'Neue Anmeldungen', 'eingang', renderInbox(groups, mailContext(c, template, groups)))
 })
 
 admin.get('/workshops/neu', (c) => {
@@ -215,7 +268,7 @@ admin.get('/workshops/neu', (c) => {
   // Beginn und Ende bleiben leer, bis es eine übliche Zeit gibt (plan.md §13).
   const values = { date: '', start_time: '', end_time: '', capacity: String(WORKSHOP.maxAttendees), note: '', status: 'published' }
 
-  return page(c, 'Neuer Termin', renderWorkshopForm({ values, today }))
+  return splitPage(c, 'Neuer Termin', null, renderWorkshopForm({ values, today }))
 })
 
 admin.post('/workshops', async (c) => {
@@ -223,7 +276,7 @@ admin.post('/workshops', async (c) => {
   const result = parseWorkshopForm(await c.req.parseBody(), { today, isNew: true })
 
   if (!result.ok) {
-    return page(c, 'Neuer Termin', renderWorkshopForm({ values: result.values, errors: result.errors, today }), 422)
+    return splitPage(c, 'Neuer Termin', null, renderWorkshopForm({ values: result.values, errors: result.errors, today }), 422)
   }
 
   const id = await createWorkshop(c.env.DB, result.value)
@@ -237,14 +290,15 @@ async function currentTemplate(db: D1Database): Promise<Template> {
 
 async function showWorkshop(c: AdminContext, workshop: WorkshopWithSeats, manual: ManualSignupOptions = {}, status: 200 | 409 | 422 = 200) {
   const [signups, template] = await Promise.all([listSignups(c.env.DB, workshop.id), currentTemplate(c.env.DB)])
-  const origin = originOf(c.req.url)
+  const context = mailContext(c, template, [{ workshop, signups }])
 
-  const context: MailContext = {
-    mails: new Map(signups.map((signup) => [signup.id, signupMail(template, workshop, signup, origin)])),
-    inviteFilename: inviteFilename(workshop.date),
-  }
-
-  return page(c, `Termin ${weekdayDate(workshop.date)}`, renderWorkshop(workshop, signups, context, manual), status)
+  return splitPage(
+    c,
+    `Termin ${weekdayDate(workshop.date)}`,
+    { workshopId: workshop.id },
+    renderWorkshop(workshop, signups, context, manual),
+    status,
+  )
 }
 
 admin.get('/workshops/:id', async (c) => {
@@ -260,7 +314,7 @@ admin.get('/workshops/:id/bearbeiten', async (c) => {
     WORKSHOP_FIELDS.map((name) => [name, String(workshop[name as keyof WorkshopWithSeats] ?? '')]),
   )
 
-  return page(c, 'Termin bearbeiten', renderWorkshopForm({ workshop, values, today: todayInZurich() }))
+  return splitPage(c, 'Termin bearbeiten', { workshopId: workshop.id }, renderWorkshopForm({ workshop, values, today: todayInZurich() }))
 })
 
 admin.post('/workshops/:id', async (c) => {
@@ -271,9 +325,10 @@ admin.post('/workshops/:id', async (c) => {
   const result = parseWorkshopForm(await c.req.parseBody(), { today, isNew: false, booked: workshop.booked })
 
   if (!result.ok) {
-    return page(
+    return splitPage(
       c,
       'Termin bearbeiten',
+      { workshopId: workshop.id },
       renderWorkshopForm({ workshop, values: result.values, errors: result.errors, today }),
       422,
     )
@@ -339,8 +394,10 @@ admin.get('/anmeldungen/:id/einladung.ics', async (c) => {
 })
 
 /**
- * Die Aktionen auf einer Anmeldung führen alle zurück auf ihren Termin, an
- * die Stelle der Anmeldung — Naira soll nicht suchen müssen, wo sie war.
+ * Die Aktionen auf einer Anmeldung führen zurück, woher sie kamen — auf den
+ * Termin an die Stelle der Anmeldung, oder in den Eingang. Naira soll nicht
+ * suchen müssen, wo sie war. Im Formular steht nur „eingang“ oder nichts,
+ * nie eine Adresse: sonst liesse sich ein Redirect nach aussen bauen.
  */
 const SIGNUP_ACTIONS = {
   kontaktiert: { run: markContacted, flash: 'geschrieben', anchor: true },
@@ -355,7 +412,10 @@ admin.post('/anmeldungen/:id/:action', async (c) => {
   const signup = await getSignup(c.env.DB, c.req.param('id'))
   if (!signup) return notFound(c)
 
+  const fromInbox = field(await c.req.parseBody(), 'ansicht') === 'eingang'
   await action.run(c.env.DB, signup.id)
+
+  if (fromInbox) return c.redirect(`/admin?meldung=${action.flash}#eingang-${signup.workshop_id}`, 303)
 
   const anchor = action.anchor ? `#anmeldung-${signup.id}` : '#anmeldungen'
   return c.redirect(`${workshopPath(signup.workshop_id)}?meldung=${action.flash}${anchor}`, 303)
@@ -461,7 +521,7 @@ admin.onError((error, c) => {
   return c.html(
     adminLayout(
       { title: 'Fehler', signedIn: false },
-      html`<div class="prose prose--narrow">
+      html`<div class="page empty">
         <h1 class="page-title">Etwas ist schiefgelaufen</h1>
         <p>Die Aktion konnte nicht ausgeführt werden. Bitte später nochmals versuchen.</p>
         <p><a href="/admin">Zurück zur Übersicht</a></p>

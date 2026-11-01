@@ -12,18 +12,24 @@ import { timestamp } from './format.ts'
  * sind normale Formulare und gehen auch ohne.
  */
 export function renderNotifications(devices: PushSubscriptionRow[], vapidPublicKey: string | null): Html {
-  return html`<div class="prose prose--narrow">
-      <p class="back"><a href="/admin">Alle Termine</a></p>
-      <h1 class="page-title">Mitteilungen</h1>
-      <p>
-        Bei jeder neuen Anmeldung über die Webseite kommt eine Mitteilung auf die Geräte, die hier
-        angemeldet sind. Ein Tipp darauf öffnet den Termin.
-      </p>
+  return html`<div class="page page--narrow">
+      <header class="detail__head">
+        <div>
+          <h1 class="page-title">Mitteilungen</h1>
+          <p class="muted">
+            Bei jeder neuen Anmeldung über die Webseite kommt eine Mitteilung auf die Geräte, die hier
+            angemeldet sind. Ein Tipp darauf öffnet den Termin.
+          </p>
+        </div>
+      </header>
+
+      <section class="panel">
+        <h2 class="panel__title">Dieses Gerät</h2>
 
       ${vapidPublicKey
         ? html`<div class="push" data-push data-vapid-key="${vapidPublicKey}">
-            <p class="note" data-push-status>Zum Aktivieren braucht es JavaScript.</p>
-            <p class="note" data-push-ios hidden>
+            <p data-push-status>Zum Aktivieren braucht es JavaScript.</p>
+            <p class="hint" data-push-ios hidden>
               Auf dem iPhone geht das nur in der App: in Safari auf Teilen tippen, dann „Zum
               Home-Bildschirm“, und den Admin von dort öffnen.
             </p>
@@ -33,30 +39,39 @@ export function renderNotifications(devices: PushSubscriptionRow[], vapidPublicK
               </button>
             </p>
           </div>`
-        : html`<p class="note">
+        : html`<p class="alert alert--warning">
             Mitteilungen sind nicht eingerichtet: es fehlen die VAPID-Schlüssel
             (<code>VAPID_PUBLIC_KEY</code>, <code>VAPID_PRIVATE_KEY</code>, <code>VAPID_SUBJECT</code>).
           </p>`}
-    </div>
+      </section>
 
-    <section class="admin-section" aria-labelledby="geraete">
-      <h2 class="section__title" id="geraete">Angemeldete Geräte</h2>
-      ${devices.length > 0
-        ? html`<ul class="admin-list" role="list">
-              ${devices.map(
-                (device) => html`<li class="admin-row">
-                  <span class="admin-row__title">${device.label ?? 'Gerät'}</span>
-                  <span class="admin-row__meta">seit ${timestamp(device.created_at)}</span>
-                  <form class="admin-row__tags" method="post" action="/admin/push/entfernen">
-                    <input type="hidden" name="endpoint" value="${device.endpoint}" />
-                    <button class="button button--small button--secondary" type="submit">Entfernen</button>
-                  </form>
-                </li>`,
-              )}
-            </ul>
-            <form method="post" action="/admin/push/test">
-              <button class="button" type="submit">Testmitteilung senden</button>
-            </form>`
-        : html`<p class="note">Noch kein Gerät angemeldet.</p>`}
-    </section>`
+      <section class="panel" aria-labelledby="geraete">
+        <div class="panel__head">
+          <h2 class="panel__title" id="geraete">Angemeldete Geräte</h2>
+          ${devices.length > 0
+            ? html`<form method="post" action="/admin/push/test">
+                <button class="button button--small button--secondary" type="submit">Testmitteilung senden</button>
+              </form>`
+            : ''}
+        </div>
+        ${devices.length > 0
+          ? html`<table class="table">
+              <tbody>
+                ${devices.map(
+                  (device) => html`<tr>
+                    <td><span class="signup__name">${device.label ?? 'Gerät'}</span></td>
+                    <td class="muted">seit ${timestamp(device.created_at)}</td>
+                    <td class="cell-end">
+                      <form method="post" action="/admin/push/entfernen">
+                        <input type="hidden" name="endpoint" value="${device.endpoint}" />
+                        <button class="button button--small button--ghost" type="submit">Entfernen</button>
+                      </form>
+                    </td>
+                  </tr>`,
+                )}
+              </tbody>
+            </table>`
+          : html`<p class="muted">Noch kein Gerät angemeldet.</p>`}
+      </section>
+    </div>`
 }
