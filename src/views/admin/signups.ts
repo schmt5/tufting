@@ -6,7 +6,8 @@ import { timestamp } from './format.ts'
 
 /**
  * Anmeldungen als Tabelle, für den Eingang und für einen Termin. Pro Zeile
- * die Hauptaktionen sichtbar (schreiben, erledigt), die seltenen im Menü „⋯“.
+ * die Hauptaktionen sichtbar (Einladung, schreiben, erledigt), die seltenen im
+ * Menü „⋮“ ganz links.
  */
 
 /** Was Naira braucht, um einer Person zu schreiben. */
@@ -23,6 +24,15 @@ export type MailContext = Map<string, SignupMailInfo>
 
 /** Von wo aus eine Aktion kommt — dorthin führt der Redirect zurück. */
 export type SignupView = 'termin' | 'eingang'
+
+/** Symbole als Inline-SVG, damit sie überall gleich aussehen. Der Text steht daneben oder versteckt dabei. */
+const ICON_MORE = html`<svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+    <circle cx="8" cy="3" r="1.5" /><circle cx="8" cy="8" r="1.5" /><circle cx="8" cy="13" r="1.5" />
+  </svg>`
+
+const ICON_DOWNLOAD = html`<svg class="icon icon--stroke" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+    <path d="M8 2v8M4.5 6.5 8 10l3.5-3.5M2.5 11.5v1.5h11v-1.5" />
+  </svg>`
 
 function signupPath(id: string, action: string): string {
   return `/admin/anmeldungen/${id}/${action}`
@@ -68,7 +78,7 @@ function state(signup: SignupRow): Html {
  * - „E-Mail schreiben“ ist ein mailto-Link und geht überall — aber ohne
  *   Anhang, das lässt mailto nicht zu. Der Kalender steht dann als Link im
  *   Text.
- * - „Einladung“ lädt die Einladung herunter, zum Anhängen von Hand. Das ist
+ * - „Einladung herunterladen“ lädt die Einladung herunter, zum Anhängen von Hand. Das ist
  *   der Weg auf dem Laptop, wo es das Teilen-Menü meist nicht gibt. Erst als
  *   Anhang zeigen Gmail und Outlook „Ja / Vielleicht / Nein“.
  * - „Mail mit Kalender“ hängt die Einladung als echte Datei an, über das
@@ -85,7 +95,7 @@ function state(signup: SignupRow): Html {
  */
 function mailButtons(signup: SignupRow, info: SignupMailInfo): Html {
   const invite = `/admin/anmeldungen/${signup.id}/einladung.ics`
-  const label = info.workshopCancelled ? 'Absage' : 'Einladung'
+  const label = info.workshopCancelled ? 'Absage herunterladen' : 'Einladung herunterladen'
 
   return html`<span class="mail-buttons">
       <button
@@ -104,10 +114,9 @@ function mailButtons(signup: SignupRow, info: SignupMailInfo): Html {
         class="button button--small button--secondary"
         href="${invite}"
         download="${info.inviteFilename}"
-        title="${label} für den Kalender herunterladen, zum Anhängen an deine Mail"
+        title="Kalenderdatei zum Anhängen an deine Mail"
       >
-        <span aria-hidden="true">↓</span> ${label}<span class="visually-hidden"> für ${signup.first_name}
-          ${signup.last_name} herunterladen</span>
+        ${ICON_DOWNLOAD} ${label}<span class="visually-hidden"> für ${signup.first_name} ${signup.last_name}</span>
       </a>
       <a class="button button--small" href="${info.mail.mailto}" data-mail-fallback>E-Mail schreiben</a>
     </span>`
@@ -117,8 +126,8 @@ function menu(signup: SignupRow, info: SignupMailInfo | undefined, view: SignupV
   const active = !signup.cancelled_at
 
   return html`<details class="menu" data-menu>
-      <summary class="button button--small button--ghost" title="Weitere Aktionen">
-        <span aria-hidden="true">⋯</span><span class="visually-hidden">Weitere Aktionen für ${signup.first_name}
+      <summary class="button button--small button--secondary button--icon" title="Weitere Aktionen">
+        ${ICON_MORE}<span class="visually-hidden">Weitere Aktionen für ${signup.first_name}
           ${signup.last_name}</span>
       </summary>
       <div class="menu__panel">
@@ -151,11 +160,10 @@ function row(signup: SignupRow, context: MailContext, view: SignupView): Html {
       <td class="nowrap">${state(signup)}</td>
       <td>
         <div class="row-actions">
-          ${active && info ? mailButtons(signup, info) : ''}
+          ${menu(signup, info, view)} ${active && info ? mailButtons(signup, info) : ''}
           ${active && !signup.contacted_at
             ? action(signup, 'kontaktiert', 'Erledigt', view, 'button button--small button--secondary')
             : ''}
-          ${menu(signup, info, view)}
         </div>
       </td>
     </tr>`
@@ -164,8 +172,8 @@ function row(signup: SignupRow, context: MailContext, view: SignupView): Html {
 /** Steht über der Tabelle: wie die Einladung in die Mail kommt. */
 export function inviteHints(): Html {
   return html`<p class="hint">
-      „↓ Einladung“ lädt die Kalender-Einladung herunter. In der Mail als Anhang anfügen — Gmail und Outlook zeigen
-      der Person dann „Ja / Vielleicht / Nein“, die Antwort kommt zu dir. Nach einer Absage dasselbe mit „↓ Absage“.
+      „Einladung herunterladen“ und die Datei in der Mail als Anhang anfügen — Gmail und Outlook zeigen der Person
+      dann „Ja / Vielleicht / Nein“, die Antwort kommt zu dir. Nach einer Absage dasselbe mit „Absage herunterladen“.
     </p>
     <p class="hint" data-invite-hint hidden>
       „Mail mit Kalender“ hängt die Einladung an und kopiert die Adresse — in der Mail im Feld „An“ einfügen.

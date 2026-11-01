@@ -656,6 +656,27 @@ main:focus {
   font-size: 0.8125rem;
 }
 
+/* Nur ein Symbol, quadratisch. Der Name steht versteckt im Button. */
+.button--icon {
+  min-width: 1.9rem;
+  padding-inline: 0.35rem;
+}
+
+.icon {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  fill: currentColor;
+}
+
+.icon--stroke {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .button--secondary {
   color: var(--text);
   background: var(--surface);
@@ -700,7 +721,7 @@ main:focus {
 }
 
 /* Erst auf schmalen Bildschirmen scrollt die Tabelle seitlich. Breiter darf
-   sie nicht: overflow schnitte das Menü „⋯“ ab. */
+   sie nicht: overflow schnitte das Menü „⋮“ ab. */
 @media (max-width: 1100px) {
   .table-wrap {
     overflow-x: auto;
@@ -796,10 +817,11 @@ a.cell-note:hover {
   white-space: nowrap;
 }
 
+/* Links bündig, damit Menü und Einladung in jeder Zeile untereinander stehen. */
 .row-actions {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 0.4rem;
 }
 
@@ -807,15 +829,13 @@ a.cell-note:hover {
   display: contents;
 }
 
-/* --- Menü „⋯“ -------------------------------------------------------------- */
+/* --- Menü „⋮“ -------------------------------------------------------------- */
 
 .menu {
   position: relative;
 }
 
 .menu > summary {
-  min-width: 2rem;
-  font-size: 1.1rem;
   list-style: none;
 }
 

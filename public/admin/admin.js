@@ -23,7 +23,7 @@ setupMenus()
 setupToast()
 
 /**
- * Die Menüs „⋯“ sind <details> und gehen auch ohne Script auf und zu. Hier
+ * Die Menüs „⋮“ sind <details> und gehen auch ohne Script auf und zu. Hier
  * nur, was ein Menü sonst noch tut: ein Klick daneben oder Escape schliesst
  * es, und es ist immer nur eines offen.
  */

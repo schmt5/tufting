@@ -350,11 +350,11 @@ bedienbar, ist aber nicht darauf optimiert.
   `.stats` (Zeit, Belegt, Frei, Noch zu beantworten). Die Anmeldungen als
   Tabelle `.table`, neue zuerst; stornierte zugeklappt darunter. Bearbeiten und
   „Neuer Termin“ öffnen sich rechts, die Liste bleibt stehen.
-- **Aktionen pro Anmeldung**: sichtbar „E-Mail schreiben“ (bzw. „Mail mit
-  Kalender“, wo das Gerät Dateien teilen kann), „↓ Einladung“ (die
-  Kalender-Einladung zum Anhängen von Hand; bei abgesagtem Termin „↓ Absage“)
-  und „Erledigt“. Seltenes im Menü
-  „⋯“ `.menu` — ein `<details>`, geht ohne JavaScript; `admin.js` schliesst es
+- **Aktionen pro Anmeldung**, von links: das Menü „⋮“ `.menu` für Seltenes,
+  „Einladung herunterladen“ (die Kalender-Einladung zum Anhängen von Hand; bei
+  abgesagtem Termin „Absage herunterladen“), „E-Mail schreiben“ (bzw. „Mail mit
+  Kalender“, wo das Gerät Dateien teilen kann) und „Erledigt“. Das Menü
+  ist ein `<details>`, geht ohne JavaScript; `admin.js` schliesst es
   bei Klick daneben und Escape. Löschen darin mit Zwischenschritt `.confirm`.
 - **Rückmeldung `.toast`**: unten rechts, fixiert, damit sie auch nach dem
   Sprung zu einer Anmeldung sichtbar bleibt. Mit JavaScript wegklickbar.

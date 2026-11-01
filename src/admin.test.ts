@@ -512,7 +512,7 @@ describe('E-Mail-Vorlage', () => {
     await request('/admin/anmeldungen', { form: signupForm(id), cookie })
     const [signup] = await listSignups(env.DB, id)
     const download = new RegExp(
-      `href="/admin/anmeldungen/${signup?.id}/einladung\\.ics"\\s+download="einladung-2099-01-10\\.ics"[^>]*>\\s*<span aria-hidden="true">↓</span> (\\S+)<`,
+      `href="/admin/anmeldungen/${signup?.id}/einladung\\.ics"\\s+download="einladung-2099-01-10\\.ics"[^>]*>\\s*<svg[^]*?</svg> (\\S+) herunterladen<`,
     )
 
     const text = await (await request(`/admin/workshops/${id}`, { cookie })).text()
