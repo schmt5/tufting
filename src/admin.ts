@@ -241,7 +241,11 @@ function mailContext(c: AdminContext, template: Template, entries: { workshop: W
     entries.flatMap(({ workshop, signups }) =>
       signups.map((signup) => [
         signup.id,
-        { mail: signupMail(template, workshop, signup, origin), inviteFilename: inviteFilename(workshop.date) },
+        {
+          mail: signupMail(template, workshop, signup, origin),
+          inviteFilename: inviteFilename(workshop.date),
+          workshopCancelled: workshop.status === 'cancelled',
+        },
       ]),
     ),
   )

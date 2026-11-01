@@ -506,6 +506,23 @@ describe('E-Mail-Vorlage', () => {
     assert.match(text, /data-mail-subject="Workshop am 10\.01\.2099"/)
   })
 
+  it('bietet pro Anmeldung die Einladung zum Herunterladen an, bei Absage als Absage', async () => {
+    const cookie = await login()
+    const id = await createWorkshop(env.DB, workshopInput(4))
+    await request('/admin/anmeldungen', { form: signupForm(id), cookie })
+    const [signup] = await listSignups(env.DB, id)
+    const download = new RegExp(
+      `href="/admin/anmeldungen/${signup?.id}/einladung\\.ics"\\s+download="einladung-2099-01-10\\.ics"[^>]*>\\s*<span aria-hidden="true">↓</span> (\\S+)<`,
+    )
+
+    const text = await (await request(`/admin/workshops/${id}`, { cookie })).text()
+    assert.equal(download.exec(text)?.[1], 'Einladung')
+    assert.match(await (await request('/admin', { cookie })).text(), download)
+
+    await request(`/admin/workshops/${id}`, { form: workshopForm({ status: 'cancelled' }), cookie })
+    assert.equal(download.exec(await (await request(`/admin/workshops/${id}`, { cookie })).text())?.[1], 'Absage')
+  })
+
   it('liefert pro Anmeldung eine Einladung mit der Person als Gast', async () => {
     const cookie = await login()
     const id = await createWorkshop(env.DB, workshopInput(4))

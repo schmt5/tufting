@@ -14,6 +14,8 @@ export interface SignupMailInfo {
   mail: SignupMail
   /** Dateiname der Einladung, z.B. `einladung-2026-11-28.ics`. */
   inviteFilename: string
+  /** Bei einem abgesagten Termin ist die Einladung eine Absage. */
+  workshopCancelled: boolean
 }
 
 /** Pro Anmeldung (ID) die ausgefüllte Vorlage. */
@@ -61,11 +63,14 @@ function state(signup: SignupRow): Html {
 }
 
 /**
- * Drei Wege zu schreiben:
+ * Wege zu schreiben:
  *
  * - „E-Mail schreiben“ ist ein mailto-Link und geht überall — aber ohne
  *   Anhang, das lässt mailto nicht zu. Der Kalender steht dann als Link im
  *   Text.
+ * - „Einladung“ lädt die Einladung herunter, zum Anhängen von Hand. Das ist
+ *   der Weg auf dem Laptop, wo es das Teilen-Menü meist nicht gibt. Erst als
+ *   Anhang zeigen Gmail und Outlook „Ja / Vielleicht / Nein“.
  * - „Mail mit Kalender“ hängt die Einladung als echte Datei an, über das
  *   Teilen-Menü des Geräts (Web Share). Erst als Anhang schlagen Gmail und
  *   Outlook den Termin direkt vor. Einen Empfänger kann das Teilen-Menü nicht
@@ -79,11 +84,14 @@ function state(signup: SignupRow): Html {
  * Safari.
  */
 function mailButtons(signup: SignupRow, info: SignupMailInfo): Html {
+  const invite = `/admin/anmeldungen/${signup.id}/einladung.ics`
+  const label = info.workshopCancelled ? 'Absage' : 'Einladung'
+
   return html`<span class="mail-buttons">
       <button
         class="button button--small"
         type="button"
-        data-invite="/admin/anmeldungen/${signup.id}/einladung.ics"
+        data-invite="${invite}"
         data-invite-name="${info.inviteFilename}"
         data-mail-to="${signup.email}"
         data-mail-subject="${info.mail.subject}"
@@ -92,6 +100,15 @@ function mailButtons(signup: SignupRow, info: SignupMailInfo): Html {
       >
         Mail mit Kalender
       </button>
+      <a
+        class="button button--small button--secondary"
+        href="${invite}"
+        download="${info.inviteFilename}"
+        title="${label} für den Kalender herunterladen, zum Anhängen an deine Mail"
+      >
+        <span aria-hidden="true">↓</span> ${label}<span class="visually-hidden"> für ${signup.first_name}
+          ${signup.last_name} herunterladen</span>
+      </a>
       <a class="button button--small" href="${info.mail.mailto}" data-mail-fallback>E-Mail schreiben</a>
     </span>`
 }
@@ -142,6 +159,17 @@ function row(signup: SignupRow, context: MailContext, view: SignupView): Html {
         </div>
       </td>
     </tr>`
+}
+
+/** Steht über der Tabelle: wie die Einladung in die Mail kommt. */
+export function inviteHints(): Html {
+  return html`<p class="hint">
+      „↓ Einladung“ lädt die Kalender-Einladung herunter. In der Mail als Anhang anfügen — Gmail und Outlook zeigen
+      der Person dann „Ja / Vielleicht / Nein“, die Antwort kommt zu dir. Nach einer Absage dasselbe mit „↓ Absage“.
+    </p>
+    <p class="hint" data-invite-hint hidden>
+      „Mail mit Kalender“ hängt die Einladung an und kopiert die Adresse — in der Mail im Feld „An“ einfügen.
+    </p>`
 }
 
 export function signupTable(signups: SignupRow[], context: MailContext, options: { view: SignupView }): Html {

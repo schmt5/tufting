@@ -5,7 +5,7 @@ import { checkbox, input, radios, textarea } from '../fields.ts'
 import type { Html } from '../layout.ts'
 import { persons, STATUS_LABELS, timeRange, weekdayDate } from './format.ts'
 import { seatsBar, workshopBadges, workshopPath } from './overview.ts'
-import { type MailContext, signupTable } from './signups.ts'
+import { inviteHints, type MailContext, signupTable } from './signups.ts'
 
 const STATUS_CHOICES = [
   { value: 'published', label: 'Veröffentlicht — auf der Seite, Anmeldung offen' },
@@ -203,11 +203,8 @@ export function renderWorkshop(
         <h2 class="panel__title" id="anmeldungen">Anmeldungen</h2>
         <span class="muted">${active.length}</span>
       </div>
-      <p class="hint" data-invite-hint hidden>
-        „Mail mit Kalender“ hängt die Einladung an und kopiert die Adresse — in der Mail im Feld „An“ einfügen.
-      </p>
       ${active.length > 0
-        ? signupTable(active, context, { view: 'termin' })
+        ? html`${inviteHints()} ${signupTable(active, context, { view: 'termin' })}`
         : html`<p class="muted panel__empty">Noch keine Anmeldungen.</p>`}
       ${manualSignupForm(workshop, manual)}
     </section>

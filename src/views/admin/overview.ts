@@ -2,7 +2,7 @@ import { html } from 'hono/html'
 import type { SignupRow, WorkshopWithSeats } from '../../db.ts'
 import type { Html } from '../layout.ts'
 import { STATUS_LABELS, timeRange, weekdayDate } from './format.ts'
-import { type MailContext, signupTable } from './signups.ts'
+import { inviteHints, type MailContext, signupTable } from './signups.ts'
 
 export function workshopPath(id: string): string {
   return `/admin/workshops/${id}`
@@ -129,9 +129,7 @@ export function renderInbox(groups: InboxGroup[], context: MailContext): Html {
         </p>
       </div>
     </header>
-    <p class="hint" data-invite-hint hidden>
-      „Mail mit Kalender“ hängt die Einladung an und kopiert die Adresse — in der Mail im Feld „An“ einfügen.
-    </p>
+    ${inviteHints()}
 
     ${groups.map(
       ({ workshop, signups }) => html`<section class="panel" aria-labelledby="eingang-${workshop.id}">

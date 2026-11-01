@@ -351,7 +351,9 @@ bedienbar, ist aber nicht darauf optimiert.
   Tabelle `.table`, neue zuerst; stornierte zugeklappt darunter. Bearbeiten und
   „Neuer Termin“ öffnen sich rechts, die Liste bleibt stehen.
 - **Aktionen pro Anmeldung**: sichtbar „E-Mail schreiben“ (bzw. „Mail mit
-  Kalender“, wo das Gerät Dateien teilen kann) und „Erledigt“. Seltenes im Menü
+  Kalender“, wo das Gerät Dateien teilen kann), „↓ Einladung“ (die
+  Kalender-Einladung zum Anhängen von Hand; bei abgesagtem Termin „↓ Absage“)
+  und „Erledigt“. Seltenes im Menü
   „⋯“ `.menu` — ein `<details>`, geht ohne JavaScript; `admin.js` schliesst es
   bei Klick daneben und Escape. Löschen darin mit Zwischenschritt `.confirm`.
 - **Rückmeldung `.toast`**: unten rechts, fixiert, damit sie auch nach dem
