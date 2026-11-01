@@ -276,11 +276,24 @@ main:focus {
   margin-top: 1rem;
 }
 
-.sidebar__past > summary {
+.sidebar__past-toggle {
+  display: block;
+  margin-top: 1rem;
   padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
   color: var(--muted);
-  cursor: pointer;
+  text-decoration: none;
+  border-radius: var(--radius);
+}
+
+.sidebar__past-toggle:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.sidebar__past-hide {
+  font-size: 0.8125rem;
+  color: var(--muted);
 }
 
 .slots {

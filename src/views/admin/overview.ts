@@ -9,11 +9,16 @@ export function workshopPath(id: string): string {
 }
 
 /** Was in der Liste links offen ist: der Eingang oder ein Termin. */
-export type Selection = 'eingang' | { workshopId: string } | null
+export type Selection = 'eingang' | { workshopId: string; date: string } | null
 
 export interface SplitOptions {
   upcoming: WorkshopWithSeats[]
-  past: WorkshopWithSeats[]
+  /** `null`: nicht geladen, die Liste zeigt dann nur den Link dazu. */
+  past: WorkshopWithSeats[] | null
+  /** Ein vergangener Termin ist offen — dann lässt sich die Liste nicht ausblenden. */
+  pastPinned: boolean
+  /** Die aktuelle Seite, für den Link zum Ein- und Ausblenden. */
+  path: string
   newCounts: Map<string, number>
   selected: Selection
 }
@@ -58,6 +63,26 @@ function list(workshops: WorkshopWithSeats[], options: SplitOptions): Html {
     </ul>`
 }
 
+/**
+ * Vergangene Termine erst auf Klick: ein Link auf dieselbe Seite mit
+ * `?vergangen`. Ohne JavaScript, und die Ansicht rechts bleibt, wie sie ist.
+ */
+function pastSection(options: SplitOptions): Html {
+  if (!options.past) {
+    return html`<a class="sidebar__past-toggle" href="${options.path}?vergangen#vergangen">Vergangene Termine anzeigen</a>`
+  }
+
+  return html`<section class="sidebar__past" id="vergangen" aria-labelledby="vergangen-titel">
+      <div class="sidebar__head">
+        <h2 class="sidebar__title" id="vergangen-titel">Vergangene Termine</h2>
+        ${options.pastPinned ? '' : html`<a class="sidebar__past-hide" href="${options.path}">Ausblenden</a>`}
+      </div>
+      ${options.past.length > 0
+        ? list(options.past, options)
+        : html`<p class="muted sidebar__empty">Keine vergangenen Termine.</p>`}
+    </section>`
+}
+
 function total(counts: Map<string, number>): number {
   return [...counts.values()].reduce((sum, count) => sum + count, 0)
 }
@@ -70,7 +95,6 @@ function total(counts: Map<string, number>): number {
  */
 export function renderSplit(options: SplitOptions, detail: Html): Html {
   const newTotal = total(options.newCounts)
-  const pastOpen = options.past.some((workshop) => isSelected(options.selected, workshop))
 
   return html`<div class="split">
       <nav class="sidebar" aria-label="Termine">
@@ -86,12 +110,7 @@ export function renderSplit(options: SplitOptions, detail: Html): Html {
         ${options.upcoming.length > 0
           ? list(options.upcoming, options)
           : html`<p class="muted sidebar__empty">Keine kommenden Termine.</p>`}
-        ${options.past.length > 0
-          ? html`<details class="sidebar__past"${pastOpen ? html` open` : ''}>
-              <summary>Vergangene Termine</summary>
-              ${list(options.past, options)}
-            </details>`
-          : ''}
+        ${pastSection(options)}
       </nav>
 
       <div class="detail">${detail}</div>

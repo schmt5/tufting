@@ -262,6 +262,25 @@ describe('Termine', () => {
     assert.match(text, /1 neu/)
   })
 
+  it('lädt vergangene Termine erst auf Wunsch', async () => {
+    const cookie = await login()
+    const past = await createWorkshop(env.DB, { ...workshopInput(4), date: '2020-03-07' })
+    const inList = new RegExp(`href="/admin/workshops/${past}"`)
+
+    const plain = await (await request('/admin', { cookie })).text()
+    assert.doesNotMatch(plain, inList)
+    assert.match(plain, /href="\/admin\?vergangen#vergangen"/)
+
+    const shown = await (await request('/admin?vergangen', { cookie })).text()
+    assert.match(shown, inList)
+    assert.match(shown, /href="\/admin">Ausblenden/)
+
+    // Ist ein vergangener Termin offen, steht die Liste da, ohne Ausblenden.
+    const selected = await (await request(`/admin/workshops/${past}`, { cookie })).text()
+    assert.match(selected, new RegExp(`href="/admin/workshops/${past}" aria-current="page"`))
+    assert.doesNotMatch(selected, /Ausblenden/)
+  })
+
   it('zeigt im Eingang nur Anmeldungen, denen noch niemand geschrieben hat', async () => {
     const cookie = await login()
     const id = await createWorkshop(env.DB, workshopInput(4))

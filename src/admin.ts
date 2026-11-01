@@ -140,16 +140,27 @@ async function page(c: AdminContext, title: string, content: Html, status: Statu
   )
 }
 
-/** Eine Seite mit der Terminliste links und `detail` rechts. */
+/**
+ * Eine Seite mit der Terminliste links und `detail` rechts.
+ *
+ * Vergangene Termine lädt sie nur auf Wunsch (`?vergangen`) oder wenn einer
+ * davon offen ist — sonst bliebe die Liste bei jedem Klick mit dabei.
+ */
 async function splitPage(c: AdminContext, title: string, selected: Selection, detail: Html, status: Status = 200) {
   const today = todayInZurich()
+  const pastSelected = typeof selected === 'object' && selected !== null && selected.date < today
+  const showPast = pastSelected || c.req.query('vergangen') !== undefined
+
   const [upcoming, past, newCounts] = await Promise.all([
     listUpcomingWorkshops(c.env.DB, today),
-    listPastWorkshops(c.env.DB, today, PAST_LIMIT),
+    showPast ? listPastWorkshops(c.env.DB, today, PAST_LIMIT) : null,
     countNewSignups(c.env.DB),
   ])
 
-  return page(c, title, renderSplit({ upcoming, past, newCounts, selected }, detail), status, newCounts)
+  // Nach einem POST mit Fehlern gibt es die Adresse nicht als Seite.
+  const path = c.req.method === 'GET' ? c.req.path : '/admin'
+
+  return page(c, title, renderSplit({ upcoming, past, pastPinned: pastSelected, path, newCounts, selected }, detail), status, newCounts)
 }
 
 function notFound(c: AdminContext) {
@@ -299,7 +310,7 @@ async function showWorkshop(c: AdminContext, workshop: WorkshopWithSeats, manual
   return splitPage(
     c,
     `Termin ${weekdayDate(workshop.date)}`,
-    { workshopId: workshop.id },
+    { workshopId: workshop.id, date: workshop.date },
     renderWorkshop(workshop, signups, context, manual),
     status,
   )
@@ -318,7 +329,7 @@ admin.get('/workshops/:id/bearbeiten', async (c) => {
     WORKSHOP_FIELDS.map((name) => [name, String(workshop[name as keyof WorkshopWithSeats] ?? '')]),
   )
 
-  return splitPage(c, 'Termin bearbeiten', { workshopId: workshop.id }, renderWorkshopForm({ workshop, values, today: todayInZurich() }))
+  return splitPage(c, 'Termin bearbeiten', { workshopId: workshop.id, date: workshop.date }, renderWorkshopForm({ workshop, values, today: todayInZurich() }))
 })
 
 admin.post('/workshops/:id', async (c) => {
@@ -332,7 +343,7 @@ admin.post('/workshops/:id', async (c) => {
     return splitPage(
       c,
       'Termin bearbeiten',
-      { workshopId: workshop.id },
+      { workshopId: workshop.id, date: workshop.date },
       renderWorkshopForm({ workshop, values: result.values, errors: result.errors, today }),
       422,
     )
