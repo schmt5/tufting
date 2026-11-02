@@ -26,7 +26,6 @@ import {
   clearLoginFailures,
   countNewSignups,
   createWorkshop,
-  deletePushSubscription,
   deleteSignup,
   deleteTemplate,
   getSignup,
@@ -35,13 +34,11 @@ import {
   insertAdminSignup,
   listNewSignups,
   listPastWorkshops,
-  listPushSubscriptions,
   listSignups,
   listUpcomingWorkshops,
   markContacted,
   nowSeconds,
   recordLoginFailure,
-  savePushSubscription,
   saveTemplate,
   updateWorkshop,
   type SignupRow,
@@ -49,8 +46,6 @@ import {
 } from './db.ts'
 import type { Env } from './env.ts'
 import { buildIcs, inviteFilename } from './ics.ts'
-import { notifyAdmin } from './notify.ts'
-import { isPlausibleSubscription, vapidConfig } from './push.ts'
 import {
   field,
   type FieldErrors,
@@ -72,7 +67,6 @@ import {
 import { weekdayDate } from './views/admin/format.ts'
 import { type AdminSection, adminLayout } from './views/admin/layout.ts'
 import { signupPath } from './views/signup.ts'
-import { renderNotifications } from './views/admin/notifications.ts'
 import { renderTemplateForm } from './views/admin/template.ts'
 import { renderLogin, renderNotConfigured } from './views/admin/login.ts'
 import { type InboxGroup, renderInbox, renderSplit, type Selection, workshopPath } from './views/admin/overview.ts'
@@ -100,10 +94,6 @@ const FLASH: Record<string, string> = {
   geschrieben: 'Als geschrieben markiert.',
   storniert: 'Anmeldung storniert, die Plätze sind wieder frei.',
   geloescht: 'Anmeldung gelöscht.',
-  'test-gesendet': 'Testmitteilung gesendet. Sie sollte in wenigen Sekunden ankommen.',
-  'test-fehler': 'Die Testmitteilung kam nicht an. Die Ursache steht in den Logs.',
-  'test-keine': 'Kein Gerät angemeldet.',
-  'geraet-entfernt': 'Gerät entfernt.',
   'vorlage-gespeichert': 'Vorlage gespeichert.',
   'vorlage-zurueckgesetzt': 'Der Standardtext gilt wieder.',
 }
@@ -117,7 +107,6 @@ type Status = 200 | 401 | 404 | 409 | 422 | 429 | 503
 /** Der Menüpunkt zur Adresse. Alles rund um Termine und Anmeldungen ist „Termine“. */
 function section(path: string): AdminSection {
   if (path.startsWith('/admin/vorlage')) return 'vorlage'
-  if (path.startsWith('/admin/mitteilungen')) return 'mitteilungen'
   return 'termine'
 }
 
@@ -474,56 +463,6 @@ admin.post('/vorlage', async (c) => {
 admin.post('/vorlage/zuruecksetzen', async (c) => {
   await deleteTemplate(c.env.DB, CONFIRMATION)
   return c.redirect('/admin/vorlage?meldung=vorlage-zurueckgesetzt', 303)
-})
-
-admin.get('/mitteilungen', async (c) => {
-  const devices = await listPushSubscriptions(c.env.DB)
-  return page(c, 'Mitteilungen', renderNotifications(devices, vapidConfig(c.env)?.publicKey ?? null))
-})
-
-/** Länger braucht kein Gerätename, und alles darüber ist kein Gerätename. */
-const MAX_LABEL_LENGTH = 60
-
-/**
- * Ein Gerät anmelden. Kommt als JSON von /admin/admin.js, nicht als Formular —
- * deshalb greift csrf() hier nicht. Ein fremdes Formular kann diesen Request
- * aber gar nicht stellen: JSON braucht einen CORS-Preflight, und das
- * Session-Cookie (SameSite=Lax) geht bei einem fremden POST nicht mit.
- */
-admin.post('/push', async (c) => {
-  let body: unknown
-  try {
-    body = await c.req.json()
-  } catch {
-    return c.json({ error: 'kein JSON' }, 400)
-  }
-
-  const { endpoint, keys, label } = (body ?? {}) as { endpoint?: unknown; keys?: { p256dh?: unknown; auth?: unknown }; label?: unknown }
-  const subscription = { endpoint, p256dh: keys?.p256dh, auth: keys?.auth }
-
-  if (!isPlausibleSubscription(subscription)) return c.json({ error: 'ungültige Subscription' }, 400)
-
-  await savePushSubscription(c.env.DB, {
-    ...subscription,
-    label: typeof label === 'string' && label.trim() ? label.trim().slice(0, MAX_LABEL_LENGTH) : null,
-  })
-  return c.body(null, 204)
-})
-
-admin.post('/push/test', async (c) => {
-  const result = await notifyAdmin(c.env, {
-    title: 'Testmitteilung',
-    body: 'So sieht eine Mitteilung bei einer neuen Anmeldung aus.',
-    url: '/admin/mitteilungen',
-  })
-
-  const key = result.sent > 0 ? 'test-gesendet' : result.failed > 0 ? 'test-fehler' : 'test-keine'
-  return c.redirect(`/admin/mitteilungen?meldung=${key}`, 303)
-})
-
-admin.post('/push/entfernen', async (c) => {
-  await deletePushSubscription(c.env.DB, field(await c.req.parseBody(), 'endpoint'))
-  return c.redirect('/admin/mitteilungen?meldung=geraet-entfernt', 303)
 })
 
 // Fehler (z.B. Datenbank nicht erreichbar) als Seite des Admins statt als

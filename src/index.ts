@@ -7,7 +7,6 @@ import { getPublishedWorkshop, getWorkshop, insertSignup, listPublishedWorkshops
 import type { Env } from './env.ts'
 import { field, parseSignupForm, SIGNUP_FIELDS } from './forms.ts'
 import { buildIcs, icsFilename } from './ics.ts'
-import { newSignupMessage, notifyAdmin } from './notify.ts'
 import { buildGraph, jsonLd, originOf } from './seo.ts'
 import { BUSINESS } from './site.ts'
 import { SIGNUP_ACTION, TOKEN_FIELD, turnstileConfig, verifyTurnstile } from './turnstile.ts'
@@ -45,18 +44,6 @@ const app = new Hono<{ Bindings: Env }>()
 
 // Admin mit eigenen Middlewares (Login, CSRF, no-store), siehe admin.ts.
 app.route('/admin', admin)
-
-/**
- * Läuft nach der Antwort weiter (waitUntil). Ohne ExecutionContext — in den
- * Tests, die die App direkt aufrufen — wird stattdessen gewartet.
- */
-async function inBackground(c: AppContext, task: Promise<unknown>): Promise<void> {
-  try {
-    c.executionCtx.waitUntil(task)
-  } catch {
-    await task
-  }
-}
 
 app.get('/', async (c) => {
   const origin = originOf(c.req.url)
@@ -231,16 +218,6 @@ app.post('/anmeldung/:id', async (c) => {
       409,
     )
   }
-
-  // Mitteilung an Naira im Hintergrund: die Besucherin wartet nicht auf den
-  // Push-Dienst, und ein Fehler dort kostet keine Anmeldung — sie steht schon
-  // in der D1 und im Admin als neu.
-  await inBackground(
-    c,
-    notifyAdmin(c.env, newSignupMessage(workshop, form.value, result.id)).catch((error) => {
-      console.error('Push: Mitteilung zur Anmeldung fehlgeschlagen', error)
-    }),
-  )
 
   return c.redirect(`${signupPath(workshop.id)}/danke`, 303)
 })

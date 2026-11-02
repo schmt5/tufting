@@ -9,7 +9,7 @@ Zwei Dinge, sonst nichts:
    Anmeldung mehr an — auch nicht, wenn zwei Leute in derselben Sekunde absenden.
 2. **Naira hat den Überblick.** Ein kleiner Admin unter `/admin`, auf dem Handy
    als App installierbar: Workshops anlegen und pflegen, sehen, wer sich
-   angemeldet hat, bei jeder neuen Anmeldung eine Push-Mitteilung bekommen.
+   angemeldet hat und wem sie noch schreiben muss.
 
 Naira schreibt den Teilnehmenden **selbst**. Die Seite verschickt keine E-Mails
 an Kundinnen und Kunden; sie hilft nur beim Schreiben — mit einer Textvorlage
@@ -45,9 +45,8 @@ Datenschutzerklärung.
 | Rendering | `hono/html` (server-side) | Öffentliche Seite wie Admin, ohne Client-Framework |
 | Daten | Cloudflare D1 (SQLite) | Free Plan, echte Transaktionen für den Platz-Check |
 | Spam-Schutz | Cloudflare Turnstile | Gratis, ohne Bilderrätsel, gleicher Anbieter wie das Hosting |
-| Benachrichtigung | Web Push an die Admin-PWA | Gratis, braucht keine eigene Domain und keinen Mailversand |
 | Geplante Jobs | Cron Trigger des Workers | Aufräumen alter Daten, ohne weiteren Dienst |
-| Assets | Workers Assets (`./public`) | CSS, Fonts, Manifest, Service Worker ohne Worker-Invocation |
+| Assets | Workers Assets (`./public`) | CSS, Fonts, Manifest, Icons ohne Worker-Invocation |
 | Build | keiner | Client-JS bleibt bei wenigen kleinen Dateien in `public/` |
 | Sprache | TypeScript | |
 
@@ -69,7 +68,7 @@ Datenschutzerklärung.
   nötig.
 - **E-Mail-Versand (Cloudflare Email Sending)**: Mails an beliebige Empfänger
   brauchen Workers Paid und eine eigene Domain auf Cloudflare. Naira schreibt
-  ohnehin selbst; für die Benachrichtigung reicht Push.
+  ohnehin selbst.
 - **Cloudflare Access vor `/admin`**: Spart den Login-Code, aber der Umweg über
   die Access-Anmeldeseite verträgt sich schlecht mit einer installierten PWA
   (der Login öffnet sich ausserhalb der App).
@@ -81,12 +80,10 @@ Besucher ──GET /──────────────> Worker ── SE
          ──GET /anmeldung/{id}─> Worker ── Formular (Personenzahl ≤ freie Plätze)
          ──POST /anmeldung/{id}> Worker ── Turnstile prüfen
                                         ── INSERT … nur wenn Plätze reichen ────> D1
-                                        ── waitUntil: Push an Nairas Geräte ──> Push-Dienst
                                         ── 303 → /anmeldung/{id}/danke
 
 Naira    ──/admin/*────────────> Worker ── Session-Cookie prüfen ── D1
-         (installierte PWA)       Service Worker zeigt die Push-Mitteilung,
-                                  ein Tipp öffnet den Termin im Admin
+         (installierte PWA)       neue Anmeldungen stehen im Eingang
 ```
 
 ### Öffentliche Routen
@@ -120,9 +117,7 @@ Alle unter `/admin`, alle mit `noindex`, `X-Robots-Tag: noindex` und
 | `POST /admin/anmeldungen/{id}/storniert` | stornieren — gibt die Plätze frei |
 | `POST /admin/anmeldungen/{id}/loeschen` | endgültig löschen |
 | `GET /admin/vorlage`, `POST /admin/vorlage` | E-Mail-Vorlage bearbeiten |
-| `GET /admin/mitteilungen` | Gerät für Push anmelden, angemeldete Geräte |
-| `POST /admin/push`, `POST /admin/push/test`, `POST /admin/push/entfernen` | Gerät anmelden (JSON), Testmitteilung, Gerät entfernen |
-| `GET /admin/manifest.webmanifest`, `/admin/admin.js`, Icons, `/admin-sw.js` | PWA, statisch aus `public/` |
+| `GET /admin/manifest.webmanifest`, `/admin/admin.js`, Icons | PWA, statisch aus `public/` |
 
 Formulare im Admin sind normale `<form method="post">`. HTML kennt nur GET und
 POST, deshalb heissen die Aktionen nach dem, was sie tun, statt PUT/DELETE zu
@@ -179,14 +174,6 @@ CREATE TABLE templates (
   updated_at  INTEGER NOT NULL
 );
 
-CREATE TABLE push_subscriptions (
-  endpoint    TEXT PRIMARY KEY,
-  p256dh      TEXT NOT NULL,
-  auth        TEXT NOT NULL,
-  label       TEXT,                        -- z.B. „iPhone Naira“
-  created_at  INTEGER NOT NULL
-);
-
 CREATE TABLE login_failures (
   ip          TEXT NOT NULL,
   at          INTEGER NOT NULL
@@ -220,7 +207,7 @@ bewusst nicht abgefragt.
   Pflicht-Checkbox braucht es in der Schweiz dafür nicht.
 - **Ohne JavaScript** funktioniert das Formular als normaler Post — bis auf
   Turnstile, das JavaScript braucht. Bewusst in Kauf genommen: Spam-Anmeldungen
-  lösten jedes Mal eine Push-Mitteilung aus.
+  füllten Nairas Eingang.
 - **Fehler** (fehlende Felder, Turnstile, zu wenig Plätze) rendern das Formular
   erneut mit den eingegebenen Werten und einer Meldung pro Feld.
 
@@ -277,9 +264,9 @@ Ein einziges Konto, kein Benutzername — nur ein Passwort.
   Ablaufzeit im Inhalt: `__Host-session`, `HttpOnly`, `Secure`,
   `SameSite=Lax`, 90 Tage. Lange, weil Naira die App auf dem Handy nicht jede
   Woche neu entsperren soll. Alle Sessions beenden = `SESSION_SECRET` wechseln.
-- **`SameSite=Lax`, nicht `Strict`**: Ein Tipp auf die Push-Mitteilung öffnet
-  den Admin von ausserhalb der Seite. Mit `Strict` käme das Cookie dabei nicht
-  mit, und Naira landete auf dem Login.
+- **`SameSite=Lax`, nicht `Strict`**: Ein Link von ausserhalb, etwa aus einer
+  Mail, öffnet den Admin. Mit `Strict` käme das Cookie dabei nicht mit, und
+  Naira landete auf dem Login.
 - **CSRF**: `csrf()`-Middleware von Hono auf allen POST-Routen (prüft den
   `Origin`-Header). Zusammen mit `Lax` reicht das.
 
@@ -287,41 +274,24 @@ Ein einziges Konto, kein Benutzername — nur ein Passwort.
 
 - `public/admin/manifest.webmanifest`: Name „Naira Admin“, `start_url` und
   `scope` `/admin`, `display: standalone`, Icons 192 und 512 px.
-- `public/admin-sw.js`: nur `push` und `notificationclick`. Liegt im
-  Wurzelverzeichnis, weil ein Service Worker unter `/admin/` nur für `/admin/…`
-  gälte — die Übersicht `/admin` selbst läge ausserhalb. **Kein Offline-Cache**
-  — die Seiten enthalten Personendaten, die nicht auf dem Gerät liegen bleiben
-  sollen, und veraltete Belegungen wären schlimmer als „offline“.
-- Manifest, Service Worker und Icons liegen öffentlich in `./public` — sie
+- **Kein Service Worker, kein Offline-Cache** — die Seiten enthalten
+  Personendaten, die nicht auf dem Gerät liegen bleiben sollen, und veraltete
+  Belegungen wären schlimmer als „offline“. Für die Installation braucht es
+  keinen.
+- Manifest und Icons liegen öffentlich in `./public` — sie
   enthalten nichts Vertrauliches. Alles mit Daten kommt aus dem Worker und
   braucht die Session.
 
-## 7. Push-Mitteilung an Naira
+## 7. Push-Mitteilung an Naira (entfernt)
 
-Bei jeder Anmeldung über die Webseite:
-
-> **Neue Anmeldung 22.11.** — Lisa M., 2 Personen. Noch 1 Platz frei.
-
-- **Gerät anmelden**: Im Admin ein Button „Mitteilungen aktivieren“. Der Browser
-  fragt um Erlaubnis, die Subscription geht per `POST /admin/push` in
-  `push_subscriptions`. Mehrere Geräte sind möglich (Handy, Laptop).
-- **iPhone**: Push für Web-Apps gibt es erst, wenn der Admin zum
-  Home-Bildschirm hinzugefügt wurde (iOS 16.4 oder neuer). Der Admin zeigt
-  einen Hinweis, solange er nicht als App läuft.
-- **Versand** im Worker nach dem Speichern, per `c.executionCtx.waitUntil` —
-  die Besucherin wartet nicht auf den Push-Dienst. VAPID (RFC 8292) und die
-  Verschlüsselung des Inhalts (RFC 8291, `aes128gcm`) laufen über WebCrypto.
-  Ob dafür eine kleine Bibliothek ohne Node-Abhängigkeit taugt oder eigener Code
-  (~150 Zeilen), entscheidet Phase 4.
-- **Abgelaufene Geräte**: Antwortet der Push-Dienst mit 404 oder 410, wird die
-  Subscription gelöscht.
-- **Keine Mitteilung** bei von Hand erfassten Anmeldungen — die hat Naira
-  selbst eingetragen.
-- **Testmitteilung** im Admin, damit sich prüfen lässt, ob es auf dem Gerät
-  ankommt.
-
-Schlägt Push fehl, geht keine Anmeldung verloren: sie steht in D1, und der
-Admin hebt neue Anmeldungen hervor (`contacted_at IS NULL`).
+Eine Zeit lang bekam Naira bei jeder Anmeldung über die Webseite eine
+Push-Mitteilung (Web Push mit VAPID, eigener Code ohne Bibliothek, Service
+Worker `admin-sw.js`, Seite „Mitteilungen“ im Admin). Gebraucht hat sie das
+nicht: neue Anmeldungen stehen ohnehin im Eingang des Admins. Entfernt sind
+Code, Seite, Service Worker, die Tabelle `push_subscriptions` (Migration 0002),
+die VAPID-Schlüssel und der Absatz in der Datenschutzerklärung. Geräte, auf
+denen der Service Worker noch installiert ist, meldet `admin.js` beim nächsten
+Öffnen ab.
 
 ## 8. E-Mail-Vorlage und Kalenderdatei
 
@@ -401,9 +371,6 @@ Die Personendaten liegen neu in der eigenen Datenbank statt bei Tally. Das
   Cron Anmeldungen 3 Monate nach dem Workshop.
 - **Speicherort**: Die D1 ist mit `--jurisdiction eu` angelegt — die Daten
   liegen und werden verarbeitet nur in der EU. Das gehört so in die Erklärung.
-- **Push**: Die Mitteilung an Naira läuft verschlüsselt über den Push-Dienst
-  von Apple bzw. Google. Sie enthält Vorname, Initial des Nachnamens und
-  Personenzahl — mehr nicht.
 - **Tally** und die Einbindung von `tally.so` fallen ganz aus der Erklärung.
   Ein Kontaktformular gibt es nicht mehr, nur einen E-Mail-Link (§13).
 
@@ -415,7 +382,8 @@ gibt es nur im Admin.
 ```
 .
 ├── migrations/
-│   └── 0001_init.sql        # Schema aus §4
+│   ├── 0001_init.sql        # Schema aus §4
+│   └── 0002_drop_push_subscriptions.sql
 ├── src/
 │   ├── index.ts             # Hono-App, öffentliche Routen, Cron-Handler
 │   ├── admin.ts             # Admin-Routen, als eigene Hono-Instanz gemountet
@@ -426,8 +394,6 @@ gibt es nur im Admin.
 │   ├── forms.ts             # Formularwerte prüfen: Termin, Anmeldung
 │   ├── test-support.ts      # leere lokale D1 mit Migrationen für die Tests
 │   ├── turnstile.ts         # siteverify
-│   ├── push.ts              # VAPID, Verschlüsselung, Versand
-│   ├── notify.ts            # Mitteilung zur Anmeldung, an alle Geräte
 │   ├── ics.ts               # Kalenderdatei
 │   ├── template.ts          # Platzhalter ersetzen, mailto-Link bauen
 │   ├── site.ts              # Stammdaten (unverändert)
@@ -441,10 +407,9 @@ gibt es nur im Admin.
 │       └── admin/           # Layout, Login, Übersicht, Termin, Vorlage
 ├── public/
 │   ├── style.css            # Tokens und Regeln, Admin nutzt dieselben
-│   ├── admin-sw.js          # Service Worker: push + notificationclick
 │   ├── admin/
 │   │   ├── manifest.webmanifest
-│   │   ├── admin.js         # Service Worker registrieren, Push aktivieren
+│   │   ├── admin.js         # Teilen, Kopieren, Menüs
 │   │   └── icon-180.png, icon-192.png, icon-512.png  # vorerst aus dem Favicon
 │   ├── fonts/, img/, favicon.svg, og-image.png
 ├── wrangler.jsonc
@@ -467,9 +432,7 @@ fallen weg.
   "triggers": { "crons": ["0 3 * * *"] },   // täglich 03:00 UTC aufräumen
   "vars": {
     "TURNSTILE_SITE_KEY": "…",
-    "TURNSTILE_HOSTNAMES": "naira-tufting.ch", // nie localhost
-    "VAPID_PUBLIC_KEY": "…",
-    "VAPID_SUBJECT": "mailto:tuftingstudio.bern@outlook.com"
+    "TURNSTILE_HOSTNAMES": "naira-tufting.ch" // nie localhost
   }
 }
 ```
@@ -480,7 +443,6 @@ Secrets (nicht im Repo, lokal in `.dev.vars`):
 wrangler secret put ADMIN_PASSWORD
 wrangler secret put SESSION_SECRET
 wrangler secret put TURNSTILE_SECRET_KEY
-wrangler secret put VAPID_PRIVATE_KEY
 ```
 
 Welche Werte lokal nötig sind, steht in `.dev.vars.example`.
@@ -558,9 +520,9 @@ die Zieldomain anlegen, `TURNSTILE_SITE_KEY` und `TURNSTILE_HOSTNAMES` setzen,
 **Fertig wenn**: Eine Anmeldung über die Seite erscheint im Admin, und ein
 voller Termin nimmt keine weitere an.
 
-### Phase 4 — Push (3–4h)
+### Phase 4 — Push (3–4h, wieder entfernt, §7)
 
-Stand: umgesetzt, ohne Bibliothek. Die Verschlüsselung ergibt Byte für Byte den
+Stand: umgesetzt, ohne Bibliothek, später wieder entfernt. Die Verschlüsselung ergibt Byte für Byte den
 Testvektor aus RFC 8291, die VAPID-Signatur lässt sich mit dem öffentlichen
 Schlüssel prüfen. Mitteilungs-Seite, Geräteliste, Testmitteilung, Aufräumen
 abgemeldeter Geräte und die Mitteilung nach jeder Anmeldung über die Webseite
@@ -617,7 +579,7 @@ Erledigt:
 
 Offen:
 
-- [ ] Auf Nairas iPhone prüfen: Mitteilungen, Teilen, Kalender-Import
+- [ ] Auf Nairas iPhone prüfen: Teilen, Kalender-Import
 - [ ] Vor dem Livegang: eigene Domain, dann ein echtes Turnstile-Widget dafür
   (Sitekey, Hostname, Secret), `SITE_ORIGIN` setzen
 
@@ -655,9 +617,8 @@ Geschätzter Gesamtaufwand: **14–20h**.
 - **Keine E-Mails an Teilnehmende** aus dem System. Naira schreibt selbst, mit
   Vorlage und Kalender-Link (§8).
 - **Ein Admin-Konto mit Passwort als Secret** (§6).
-- **Benachrichtigung per Push**, nicht per E-Mail (§7). Nach einem Tipp auf die
-  Mitteilung mit abgelaufener Session führt der Login auf die Übersicht, nicht
-  zurück auf den Termin — ein Randfall, der keinen eigenen Code wert ist.
+- **Keine Benachrichtigung** bei neuen Anmeldungen, weder Push noch E-Mail
+  (§7). Naira sieht sie im Eingang des Admins.
 - **Anmeldungen werden 3 Monate nach dem Workshop gelöscht** — genug für
   Nachfragen, Gutscheine, Nachholtermine. In der Datenschutzerklärung bleibt
   es bei „so lange wie nötig“.
@@ -678,9 +639,9 @@ Geschätzter Gesamtaufwand: **14–20h**.
 - **Bilder**: Carousel (3:2), Intro (4:3), Porträt (3:4) und `og-image.png`
   sind Platzhalter; echte Fotos brauchen je einen Alt-Text.
 - **Rechtstexte inhaltlich prüfen lassen**, nach der Anpassung aus §9.
-- **Custom Domain**: Sobald sie steht, gehört sie in `SITE_ORIGIN`. Für Push
-  und Admin reicht `workers.dev`; ein Domainwechsel heisst aber, dass Naira die
-  App neu installieren und Mitteilungen neu aktivieren muss (andere Herkunft).
+- **Custom Domain**: Sobald sie steht, gehört sie in `SITE_ORIGIN`. Für den
+  Admin reicht `workers.dev`; ein Domainwechsel heisst aber, dass Naira die
+  App neu installieren muss (andere Herkunft).
   Besser also vor der Installation auf ihrem Handy.
 
 ## 14. Nicht im Scope
@@ -700,14 +661,13 @@ Erwartetes Volumen: ~500 Seitenaufrufe und eine Handvoll Anmeldungen pro Monat.
 | Limit | Free Plan | Erwartete Nutzung |
 |---|---|---|
 | Worker-Requests | 100'000 / Tag | ~20 / Tag |
-| CPU-Zeit | 10 ms / Invocation | < 2 ms, auch mit Push-Verschlüsselung |
-| Subrequests | 50 / Invocation | Turnstile + 1 pro Push-Gerät |
+| CPU-Zeit | 10 ms / Invocation | < 2 ms |
+| Subrequests | 50 / Invocation | 1 (Turnstile) |
 | D1 gelesene Zeilen | 5 Mio. / Tag | wenige Tausend |
 | D1 geschriebene Zeilen | 100'000 / Tag | einstellig |
 | D1 Speicher | 5 GB | wenige KB |
 | Cron Trigger | im Free Plan enthalten | 1 pro Tag |
 | Turnstile | gratis | |
-| Web Push | gratis (Push-Dienste von Apple/Google) | |
 
 Kein Grund für den Paid Plan. Die Tally-Grenzen (100 API-Anfragen pro Minute,
 ~49 Formulare pro Seitenaufbau) entfallen.

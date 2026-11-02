@@ -6,10 +6,9 @@ import type { Html } from './layout.ts'
  * Impressum und Datenschutzerklärung.
  *
  * Was sich aus dem Code ergibt, steht hier ausformuliert: Hosting auf
- * Cloudflare Workers, die Anmeldung in der eigenen Datenbank, Turnstile, die
- * Mitteilung an die Betreiberin — alles Bearbeitungen, die genannt werden
- * müssen. Alles, was nur die Betreiberin
- * weiss, steht als sichtbarer Platzhalter da und nicht als erfundener Satz.
+ * Cloudflare Workers, die Anmeldung in der eigenen Datenbank, Turnstile —
+ * alles Bearbeitungen, die genannt werden müssen. Alles, was nur die
+ * Betreiberin weiss, steht als sichtbarer Platzhalter da und nicht als erfundener Satz.
  *
  * Das ist eine Vorlage, keine Rechtsberatung. Vor dem Aufschalten prüfen lassen.
  */
@@ -67,7 +66,7 @@ export function renderImprint(): Html {
 }
 
 /**
- * Anmeldung: Datenbank, Mitteilung an die Betreiberin, Spam-Schutz. Was hier
+ * Anmeldung: Datenbank und Spam-Schutz. Was hier
  * steht, ergibt sich aus dem Code — plan.md §9.
  */
 function signup(): Html {
@@ -79,12 +78,6 @@ function signup(): Html {
       Kontaktaufnahme durch ${BUSINESS.person}. Grundlage ist die Erfüllung des Vertrags.
     </p>
     <p>Die Angaben werden so lange aufbewahrt, wie es dafür nötig ist, und danach gelöscht.</p>
-    <p>
-      Über eine neue Anmeldung bekommt ${BUSINESS.person} eine Mitteilung auf ihr Gerät. Sie
-      enthält deinen Vornamen, den ersten Buchstaben deines Nachnamens und die Anzahl Personen
-      und wird verschlüsselt über den Mitteilungsdienst von Apple oder Google zugestellt, der
-      den Inhalt nicht lesen kann.
-    </p>
 
     <h2 class="section__title">Schutz vor automatisierten Anmeldungen</h2>
     <p>

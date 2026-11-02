@@ -92,9 +92,8 @@ export async function isLockedOut(db: D1Database, ip: string, now: number): Prom
  * braucht es nicht: es gibt genau ein Konto, und wer ein gültig signiertes
  * Cookie hat, ist eingeloggt.
  *
- * `SameSite=Lax` statt `Strict`: ein Tipp auf die Push-Mitteilung öffnet den
- * Admin von ausserhalb der Seite. Mit `Strict` käme das Cookie dabei nicht
- * mit. Gegen fremde Formulare schützt die csrf()-Middleware.
+ * `SameSite=Lax` statt `Strict`: ein Link von ausserhalb, etwa aus einer
+ * Mail, öffnet den Admin. Mit `Strict` käme das Cookie dabei nicht mit. Gegen fremde Formulare schützt die csrf()-Middleware.
  */
 export async function startSession(c: Context, secrets: AdminSecrets, now: number): Promise<void> {
   await setSignedCookie(c, SESSION_COOKIE, String(now + SESSION_SECONDS), secrets.sessionSecret, {

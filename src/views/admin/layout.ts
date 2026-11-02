@@ -12,7 +12,7 @@ import type { Html } from '../layout.ts'
  * es auch für Antworten gilt, die kein HTML sind.
  */
 
-export type AdminSection = 'termine' | 'vorlage' | 'mitteilungen'
+export type AdminSection = 'termine' | 'vorlage'
 
 export interface AdminLayoutOptions {
   title: string
@@ -29,7 +29,6 @@ export interface AdminLayoutOptions {
 const SECTIONS: { key: AdminSection; href: string; label: string }[] = [
   { key: 'termine', href: '/admin', label: 'Termine' },
   { key: 'vorlage', href: '/admin/vorlage', label: 'E-Mail-Vorlage' },
-  { key: 'mitteilungen', href: '/admin/mitteilungen', label: 'Mitteilungen' },
 ]
 
 function navigation(options: AdminLayoutOptions): Html {
@@ -90,7 +89,7 @@ export function adminLayout(options: AdminLayoutOptions, content: Html | string)
             </div>`
           : ''}
 
-        <!-- Service Worker, Push, Teilen, Menüs. Die Seiten funktionieren auch ohne. -->
+        <!-- Teilen, Kopieren, Menüs. Die Seiten funktionieren auch ohne. -->
         <script type="module" src="/admin/admin.js"></script>
       </body>
     </html>`

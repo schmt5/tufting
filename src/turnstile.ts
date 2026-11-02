@@ -4,7 +4,7 @@
  *
  * Schlägt irgendetwas fehl (Netz, Antwort, Inhalt), gilt die Prüfung als
  * nicht bestanden: lieber eine echte Anmeldung, die es nochmals versuchen
- * muss, als eine Spam-Anmeldung, die Naira eine Push-Mitteilung schickt.
+ * muss, als eine Spam-Anmeldung in Nairas Eingang.
  *
  * Doku: https://developers.cloudflare.com/turnstile/get-started/server-side-validation/
  */

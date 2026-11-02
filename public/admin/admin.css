@@ -351,14 +351,10 @@ main:focus {
   margin-top: 1.5rem;
 }
 
-/* Seiten ohne Terminliste: Vorlage, Mitteilungen. */
+/* Seiten ohne Terminliste: die Vorlage. */
 .page {
   max-width: 76rem;
   padding: 2rem 2.5rem 4rem;
-}
-
-.page--narrow {
-  max-width: 48rem;
 }
 
 @media (max-width: 860px) {
@@ -782,10 +778,6 @@ main:focus {
 }
 
 .table .num {
-  text-align: right;
-}
-
-.cell-end {
   text-align: right;
 }
 

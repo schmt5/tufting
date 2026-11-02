@@ -12,14 +12,12 @@ import {
   getSignup,
   getWorkshop,
   insertSignup,
-  listPushSubscriptions,
   listSignups,
-  savePushSubscription,
   type WorkshopInput,
 } from './db.ts'
 import type { Env } from './env.ts'
 import { app } from './index.ts'
-import { resetDatabase, testDatabase, testDeviceKeys, testVapidKeys } from './test-support.ts'
+import { resetDatabase, testDatabase } from './test-support.ts'
 
 const PASSWORD = 'test-passwort-nur-fuer-die-tests'
 const ORIGIN = 'http://localhost'
@@ -87,7 +85,6 @@ before(async () => {
     DB: proxy.env.DB,
     ADMIN_PASSWORD: PASSWORD,
     SESSION_SECRET: 'k'.repeat(40),
-    ...(await testVapidKeys()),
   }
 })
 
@@ -378,89 +375,6 @@ describe('Anmeldungen', () => {
     const text = await (await request(`/admin/workshops/${id}`, { cookie })).text()
     assert.doesNotMatch(text, /<script>alert/)
     assert.match(text, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/)
-  })
-})
-
-describe('Mitteilungen', () => {
-  function postJson(path: string, body: unknown, cookie: string) {
-    return app.request(
-      path,
-      { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify(body) },
-      env,
-    )
-  }
-
-  it('meldet ein Gerät an und zeigt es in der Liste', async () => {
-    const cookie = await login()
-    const keys = await testDeviceKeys()
-
-    const res = await postJson('/admin/push', { endpoint: 'https://web.push.apple.com/abc', keys, label: 'iPhone' }, cookie)
-    assert.equal(res.status, 204)
-
-    const [device] = await listPushSubscriptions(env.DB)
-    assert.equal(device?.label, 'iPhone')
-
-    const text = await (await request('/admin/mitteilungen', { cookie })).text()
-    assert.match(text, /iPhone/)
-    assert.match(text, /data-vapid-key="[A-Za-z0-9_-]{87}"/)
-  })
-
-  it('nimmt keine unbrauchbaren Subscriptions an', async () => {
-    const cookie = await login()
-    const keys = await testDeviceKeys()
-
-    assert.equal((await postJson('/admin/push', { endpoint: 'http://unsicher.example/abc', keys }, cookie)).status, 400)
-    assert.equal((await postJson('/admin/push', { endpoint: 'https://push.example/abc' }, cookie)).status, 400)
-    assert.deepEqual(await listPushSubscriptions(env.DB), [])
-  })
-
-  it('lässt ohne Session niemanden ein Gerät anmelden', async () => {
-    const keys = await testDeviceKeys()
-    const res = await postJson('/admin/push', { endpoint: 'https://push.example/abc', keys }, '')
-
-    assert.equal(res.status, 303)
-    assert.deepEqual(await listPushSubscriptions(env.DB), [])
-  })
-
-  it('schickt eine Testmitteilung und räumt abgemeldete Geräte weg', async () => {
-    const cookie = await login()
-    await savePushSubscription(env.DB, { endpoint: 'https://push.example/aktiv', ...(await testDeviceKeys()), label: 'Mac' })
-    await savePushSubscription(env.DB, { endpoint: 'https://push.example/weg', ...(await testDeviceKeys()), label: 'Alt' })
-
-    const fetchMock = mock.method(globalThis, 'fetch', async (url: string) =>
-      new Response(null, { status: url.endsWith('/weg') ? 410 : 201 }),
-    )
-
-    const res = await request('/admin/push/test', { form: {}, cookie })
-    assert.match(res.headers.get('location') ?? '', /meldung=test-gesendet/)
-    assert.equal(fetchMock.mock.callCount(), 2)
-    assert.deepEqual((await listPushSubscriptions(env.DB)).map((device) => device.label), ['Mac'])
-  })
-
-  it('sagt es, wenn kein Gerät angemeldet ist', async () => {
-    const res = await request('/admin/push/test', { form: {}, cookie: await login() })
-    assert.match(res.headers.get('location') ?? '', /meldung=test-keine/)
-  })
-
-  it('entfernt ein Gerät', async () => {
-    const cookie = await login()
-    await savePushSubscription(env.DB, { endpoint: 'https://push.example/1', ...(await testDeviceKeys()), label: null })
-
-    await request('/admin/push/entfernen', { form: { endpoint: 'https://push.example/1' }, cookie })
-    assert.deepEqual(await listPushSubscriptions(env.DB), [])
-  })
-
-  it('zeigt ohne VAPID-Schlüssel, was fehlt, statt eines Knopfs', async () => {
-    const cookie = await login()
-    const saved = env
-    env = { ...env, VAPID_PRIVATE_KEY: '' }
-    try {
-      const text = await (await request('/admin/mitteilungen', { cookie })).text()
-      assert.match(text, /nicht eingerichtet/)
-      assert.doesNotMatch(text, /data-push-enable/)
-    } finally {
-      env = saved
-    }
   })
 })
 

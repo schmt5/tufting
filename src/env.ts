@@ -24,10 +24,4 @@ export interface Env {
    * nur die echte Domain, nie localhost.
    */
   TURNSTILE_HOSTNAMES?: string
-  /** Öffentlicher VAPID-Schlüssel für Web Push (Var), base64url. */
-  VAPID_PUBLIC_KEY?: string
-  /** Privater VAPID-Schlüssel (`wrangler secret put VAPID_PRIVATE_KEY`), base64url. */
-  VAPID_PRIVATE_KEY?: string
-  /** Kontakt für die Push-Dienste, z.B. `mailto:…` (Var). */
-  VAPID_SUBJECT?: string
 }

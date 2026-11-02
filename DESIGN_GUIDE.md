@@ -331,12 +331,12 @@ eine Akzentfarbe (Blau) für Links und Hauptbuttons. Auf dem Handy bleibt alles
 bedienbar, ist aber nicht darauf optimiert.
 
 - **Aufbau**: Leiste oben (Termine mit der Zahl offener Anmeldungen,
-  E-Mail-Vorlage, Mitteilungen, Abmelden). Darunter bei allem rund um Termine
+  E-Mail-Vorlage, Abmelden). Darunter bei allem rund um Termine
   zwei Spalten wie ein Mail-Programm: links die Terminliste `.sidebar`
   (sticky, eigenes Scrollen), rechts der Inhalt `.detail`. Jede Ansicht ist
   eine eigene Adresse, die Liste kommt mit jeder Seite vom Server — kein
-  JavaScript nötig. Unter `860px` steht die Liste über dem Inhalt. Vorlage und
-  Mitteilungen haben die ganze Breite (`.page`).
+  JavaScript nötig. Unter `860px` steht die Liste über dem Inhalt. Die Vorlage
+  hat die ganze Breite (`.page`).
 - **Startseite `/admin` = Eingang**: alle Anmeldungen, denen Naira noch nicht
   geschrieben hat, nach Termin gruppiert. Das ist, was nach dem Login zu tun
   ist. „Erledigt“ nimmt eine Anmeldung aus dem Eingang.
@@ -511,7 +511,7 @@ Zwei Punkte, die man dabei kennen muss:
 - **Kein Client-JS für Inhalt.** Ohne JavaScript bleibt die Seite vollständig
   lesbar, inklusive Galerie. Script gibt es nur dort, wo die Plattform es
   verlangt: das Turnstile-Widget auf der
-  eigenen Anmeldeseite und im Admin `admin.js` für Service Worker, Push,
+  eigenen Anmeldeseite und im Admin `admin.js` für
   Kopieren, Teilen und das Schliessen der Menüs. Was ein Script erst freischaltet, steht mit `hidden` im
   HTML und wird nur gezeigt, wo es auch geht.
 - **`[hidden]` gewinnt immer** (`display: none !important` in der Basis). Sonst
@@ -571,8 +571,7 @@ Diese Liste existiert, damit „nur dieses eine Mal“ nicht passiert:
 | `DESIGN_GUIDE.md` | dieses Dokument — die Entscheidungen |
 | `public/style.css` | Tokens und Regeln, gliedert sich nach §2–6 |
 | `public/admin/admin.css` | Stylesheet des Admins, unabhängig von `style.css` (§6) |
-| `public/admin/admin.js` | Admin: Service Worker registrieren, Push aktivieren, Kopieren, Teilen |
-| `public/admin-sw.js` | Service Worker des Admins: Mitteilungen anzeigen und öffnen |
+| `public/admin/admin.js` | Admin: Kopieren, Teilen, Menüs |
 | `public/admin/manifest.webmanifest` | Admin als App, mit `icon-180/192/512.png` aus der Wortmarke |
 | `public/fonts/inter-latin-var.woff2` | Inter Variable, Latin-Subset |
 | `public/fonts/inter-OFL.txt` | Lizenz, muss bei der Font-Datei bleiben |
@@ -588,7 +587,7 @@ Diese Liste existiert, damit „nur dieses eine Mal“ nicht passiert:
 | `src/views/card.ts` | Card-Markup und Zustandslogik |
 | `src/views/signup.ts` | Anmeldeseite mit Formular, Danke-Seite |
 | `src/views/fields.ts` | Formularfelder mit Label, Hinweis und Fehlermeldung |
-| `src/views/admin/` | Admin: Layout, Login, Liste und Eingang, Termin, Anmeldungstabelle, Vorlage, Mitteilungen |
+| `src/views/admin/` | Admin: Layout, Login, Liste und Eingang, Termin, Anmeldungstabelle, Vorlage |
 | `src/views/about.ts` | Section „Ich bin Naira" |
 | `src/views/legal.ts` | Impressum, Datenschutz, 404 — `.prose--narrow` |
 

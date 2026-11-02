@@ -18,11 +18,7 @@
     // Bots. Vor dem Livegang: echtes Widget für die Domain anlegen, Sitekey und
     // Domain hier eintragen, das echte Secret als TURNSTILE_SECRET_KEY setzen.
     "TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
-    "TURNSTILE_HOSTNAMES": "example.com",
-    // Öffentlicher Teil des VAPID-Paars für Web Push; der private liegt als
-    // Secret VAPID_PRIVATE_KEY. Neue Schlüssel heissen: alle Geräte neu anmelden.
-    "VAPID_PUBLIC_KEY": "BK_X2bPonW4fPM0b-8pzDTq3fdcVgoTSfw72CkyRSv22LD7fNT8u9rgcFrYByM4180akU9uyStL4jxkVUw1q0Xk",
-    "VAPID_SUBJECT": "mailto:tuftingstudio.bern@outlook.com"
+    "TURNSTILE_HOSTNAMES": "example.com"
   },
   // Täglich 03:00 UTC: alte Anmeldungen und Login-Fehlversuche löschen (cleanup.ts).
   "triggers": {
